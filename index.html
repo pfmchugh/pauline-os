@@ -17,10 +17,44 @@
   <!-- ═══ Menu bar ═══ -->
   <div id="menu-bar" class="pixel">
     <div class="brand">Pauline&nbsp;OS</div>
-    <div class="menu-item">File</div>
-    <div class="menu-item">Edit</div>
-    <div class="menu-item">View</div>
-    <div class="menu-item">Special</div>
+
+    <div class="menu-item" data-menu="file">
+      <span class="menu-label">File</span>
+      <div class="menu-dropdown">
+        <div class="menu-option" data-cmd="open-resume">Open Resume.pdf</div>
+        <div class="menu-option" data-cmd="new-job-offer">New Job Offer…</div>
+        <div class="menu-sep"></div>
+        <div class="menu-option" data-cmd="shut-down">Shut Down…</div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="edit">
+      <span class="menu-label">Edit</span>
+      <div class="menu-dropdown">
+        <div class="menu-option disabled">Select All Bugs</div>
+        <div class="menu-sep"></div>
+        <div class="menu-option" data-cmd="copy-email">Copy Email Address</div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="view">
+      <span class="menu-label">View</span>
+      <div class="menu-dropdown">
+        <div class="menu-option" data-cmd="clean-up">Clean Up Desktop</div>
+        <div class="menu-option" data-cmd="toggle-scanlines">Toggle Scanlines</div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="special">
+      <span class="menu-label">Special</span>
+      <div class="menu-dropdown">
+        <div class="menu-option" data-cmd="eject">Eject Pauline</div>
+        <div class="menu-option" data-cmd="empty-trash">Empty Trash…</div>
+        <div class="menu-sep"></div>
+        <div class="menu-option" data-cmd="restart">Restart</div>
+      </div>
+    </div>
+
     <div class="spacer"></div>
     <div class="clock" id="clock"></div>
   </div>
@@ -89,7 +123,7 @@
   </button>
 
   <!-- ═══ Resume window ═══ -->
-  <div class="win open" id="win-resume" data-win="resume">
+  <div class="win" id="win-resume" data-win="resume">
     <div class="win-titlebar" data-drag>
       <button class="win-btn" data-action="close" aria-label="Close">×</button>
       <div class="win-title"><span>Resume.pdf</span></div>
@@ -205,8 +239,32 @@
       <button class="win-btn" data-action="zoom" aria-label="Zoom"><span class="box"></span></button>
     </div>
     <div class="win-body">
-      <div class="folder-status">0 items &nbsp;·&nbsp; plenty of space available</div>
-      <div class="folder-empty">This folder is empty.<br>Projects coming soon…</div>
+      <div class="folder-status">1 item &nbsp;·&nbsp; plenty of space available</div>
+      <div class="folder-contents">
+        <button class="folder-icon" id="open-readme">
+          <div class="icon-pdf">
+            <div class="line"></div>
+            <div class="line short" style="width:80%"></div>
+            <div class="line"></div>
+            <div class="tag gray">MD</div>
+          </div>
+          <div class="folder-icon-label">README.md</div>
+        </button>
+      </div>
+    </div>
+    <div class="win-resize" data-resize aria-hidden="true"></div>
+  </div>
+
+  <!-- ═══ README window ═══ -->
+  <div class="win" id="win-readme" data-win="readme">
+    <div class="win-titlebar" data-drag>
+      <button class="win-btn" data-action="close" aria-label="Close">×</button>
+      <div class="win-title"><span>README.md</span></div>
+      <button class="win-btn" data-action="shade" aria-label="Collapse"><span class="dash"></span></button>
+      <button class="win-btn" data-action="zoom" aria-label="Zoom"><span class="box"></span></button>
+    </div>
+    <div class="win-body">
+      <textarea class="notepad" id="readme-text" spellcheck="false" aria-label="README editor"></textarea>
     </div>
     <div class="win-resize" data-resize aria-hidden="true"></div>
   </div>
@@ -220,17 +278,7 @@
       <button class="win-btn" data-action="zoom" aria-label="Zoom"><span class="box"></span></button>
     </div>
     <div class="win-body">
-      <div class="text-content">═══ HELLO ═══
-
-Hi, I'm Pauline. Welcome to my desktop.
-Poke around — my resume is on the desktop,
-and you can drop me a line with Mail.
-
-email ...... mchughpf@gmail.com
-location ... Houston, TX
-linkedin ... linkedin.com/in/pfmchugh
-
-Say hi — I read everything.</div>
+      <textarea class="notepad" id="hello-text" spellcheck="false" aria-label="Notepad"></textarea>
     </div>
     <div class="win-resize" data-resize aria-hidden="true"></div>
   </div>
@@ -277,14 +325,14 @@ Say hi — I read everything.</div>
         <textarea id="mail-message" placeholder="Write your message…"></textarea>
         <div class="mail-actions">
           <span id="mail-error"></span>
-          <button type="submit" class="pixel-btn" style="border:1px solid var(--win-fg);box-shadow:inset 1px 1px 0 var(--bevel-light),inset -1px -1px 0 var(--bevel-dark),2px 2px 0 rgba(0,0,0,.3);font-size:11px;padding:5px 16px">Send ▸</button>
+          <button type="submit" class="pixel-btn mail-send">Send ▸</button>
         </div>
       </form>
       <div class="mail-sent" id="mail-sent">
         <div class="envelope"><div class="flap"></div></div>
         <div class="headline">Message sent!</div>
         <div class="sub">Pauline will get back to you. Probably.</div>
-        <button type="button" class="pixel-btn" id="mail-reset" style="font-size:10px;padding:4px 12px">Write another</button>
+        <button type="button" class="pixel-btn" id="mail-reset">Write another</button>
       </div>
     </div>
     <div class="win-resize" data-resize aria-hidden="true"></div>
@@ -323,13 +371,59 @@ Say hi — I read everything.</div>
       <button class="win-btn" data-action="zoom" aria-label="Zoom"><span class="box"></span></button>
     </div>
     <div class="win-body">
-      <div class="trash-empty">Trash is empty.<br>No regrets here.</div>
+      <div class="trash-status" id="trash-status"></div>
+      <div class="trash-list" id="trash-list"></div>
+      <div class="trash-actions" id="trash-actions">
+        <button class="pixel-btn" id="trash-empty-btn">Empty Trash</button>
+      </div>
+      <div class="trash-empty" id="trash-empty">Trash is empty.<br>No regrets here.</div>
     </div>
     <div class="win-resize" data-resize aria-hidden="true"></div>
   </div>
 
+  <!-- ═══ Pixel corgi ═══ -->
+  <div id="cat">
+    <img src="assets/corgi-0.png" alt="" draggable="false">
+  </div>
+
+  <!-- ═══ Trash drag ghost + puff ═══ -->
+  <div id="drag-ghost">
+    <div class="ghost-file"></div>
+    <div class="ghost-name" id="drag-ghost-name"></div>
+  </div>
+  <div id="puff"><div class="ring"></div></div>
+
+  <!-- ═══ Konami confetti ═══ -->
+  <div id="confetti"></div>
+
   <!-- CRT scanlines overlay -->
   <div id="scanlines"></div>
+
+  <!-- Click-away overlay for open menus -->
+  <div id="menu-overlay"></div>
+
+  <!-- ═══ Alert dialog ═══ -->
+  <div id="dialog">
+    <div class="dialog-box">
+      <div class="dialog-title" id="dialog-title"></div>
+      <div class="dialog-sub" id="dialog-sub"></div>
+      <button class="dialog-ok" id="dialog-ok">OK</button>
+    </div>
+  </div>
+
+  <!-- ═══ Boot screen ═══ -->
+  <div id="boot">
+    <div class="boot-logo">P</div>
+    <div class="boot-name">Pauline OS</div>
+    <div class="boot-bar"><div class="boot-fill"></div></div>
+    <div class="boot-sub">Loading quality assurance…</div>
+  </div>
+
+  <!-- ═══ Screensaver ═══ -->
+  <div id="saver">
+    <canvas id="saver-canvas"></canvas>
+    <div class="saver-hint">Pauline OS — move the mouse to wake</div>
+  </div>
 
 </div>
 

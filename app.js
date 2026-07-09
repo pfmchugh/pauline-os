@@ -8,6 +8,12 @@
     scanlines: false,
   };
 
+  const EMAIL = 'mchughpf@gmail.com';
+
+  const HELLO_TEXT = "═══ HELLO ═══\n\nHi, I'm Pauline. Welcome to my desktop.\nPoke around — my resume is on the desktop,\nand you can drop me a line with Mail.\n\nemail ...... mchughpf@gmail.com\nlocation ... Houston, TX\nlinkedin ... linkedin.com/in/pfmchugh\n\nSay hi — I read everything.";
+
+  const README_TEXT = "═══ README ═══\n\nWhat's cooking:\n\n- pauline-os v2 (you are here)\n- writing up QA war stories\n- more apps for this desktop\n\nCheck back soon — this folder\nwon't stay empty for long.";
+
   const SIZES = {
     resume: [660, 540],
     projects: [440, 300],
@@ -16,12 +22,13 @@
     mail: [480, 420],
     trash: [400, 240],
     calendar: [740, 560],
+    readme: [440, 360],
   };
 
   const MIN_SIZE = { w: 220, h: 140 };
 
   const INITIAL = {
-    open: { resume: true, projects: false, contact: true, contacts: false, mail: false, trash: false, calendar: false },
+    open: { resume: false, projects: false, contact: true, contacts: false, mail: false, trash: false, calendar: false, readme: false },
     pos: {
       resume: { x: 80, y: 70 },
       projects: { x: 160, y: 120 },
@@ -30,6 +37,7 @@
       mail: { x: 140, y: 90 },
       trash: { x: 260, y: 170 },
       calendar: { x: 110, y: 60 },
+      readme: { x: 240, y: 130 },
     },
     z: { resume: 11, contact: 12 },
   };
@@ -42,12 +50,22 @@
     shaded: {},
     maxed: {},
     topZ: 12,
+    trashItems: [
+      { name: 'impostor_syndrome.zip', note: '4.2 GB — safe to delete' },
+      { name: 'flaky_test_v47.js', note: 'passes on the 48th try' },
+      { name: 'selenium_ide_scripts/', note: 'it was a different time' },
+    ],
+    clockMode: 0,
+    scanlinesOn: CONFIG.scanlines,
+    cat: { x: -60, dir: 1, mode: 'hidden', dur: 0 },
   };
 
   const winEls = {};
   for (const id of Object.keys(SIZES)) {
     winEls[id] = document.getElementById('win-' + id);
   }
+
+  // ═══ Window management ═══
 
   function clamp(id) {
     const { w: bw, h: bh } = state.size[id];
@@ -97,6 +115,7 @@
     state.open[id] = true;
     state.shaded[id] = false;
     focusWin(id);
+    if (id === 'contact') startTyping();
   }
 
   function closeWin(id) {
@@ -164,8 +183,6 @@
     window.addEventListener('pointerup', up);
   }
 
-  // Wire up window chrome + icons
-
   for (const id of Object.keys(SIZES)) {
     const el = winEls[id];
     if (!el) continue;
@@ -184,15 +201,83 @@
 
   window.addEventListener('resize', renderAll);
 
-  // ═══ Menu bar clock ═══
+  // README opens from inside the Projects folder
+  document.getElementById('open-readme').addEventListener('click', () => openWin('readme'));
+
+  // ═══ Menu bar dropdowns ═══
+
+  const menuBar = document.getElementById('menu-bar');
+  const menuOverlay = document.getElementById('menu-overlay');
+  const menuItems = Array.from(menuBar.querySelectorAll('.menu-item'));
+
+  function closeMenus() {
+    menuItems.forEach((m) => m.classList.remove('active'));
+    menuOverlay.classList.remove('on');
+  }
+
+  menuItems.forEach((item) => {
+    item.querySelector('.menu-label').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasActive = item.classList.contains('active');
+      closeMenus();
+      if (!wasActive) {
+        item.classList.add('active');
+        menuOverlay.classList.add('on');
+      }
+    });
+  });
+
+  menuOverlay.addEventListener('click', closeMenus);
+
+  const MENU_ACTIONS = {
+    'open-resume': () => openWin('resume'),
+    'new-job-offer': () => openWin('mail'),
+    'shut-down': () => showDialog('Nice try.', 'Pauline OS runs 24/7. Uptime: 15 years and counting.'),
+    'copy-email': () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(EMAIL).catch(() => {});
+      showDialog('Copied!', EMAIL + ' is on your clipboard. Use it wisely.');
+    },
+    'clean-up': cleanUp,
+    'toggle-scanlines': () => setScanlines(!state.scanlinesOn),
+    'eject': () => showDialog('Pauline cannot be ejected.', 'She is load-bearing.'),
+    'empty-trash': () => { emptyTrash(); openWin('trash'); },
+    'restart': reboot,
+  };
+
+  menuBar.querySelectorAll('.menu-option[data-cmd]').forEach((opt) => {
+    opt.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMenus();
+      const fn = MENU_ACTIONS[opt.dataset.cmd];
+      if (fn) fn();
+    });
+  });
+
+  // ═══ Menu bar clock (with easter-egg cycle) ═══
+
+  const clockEl = document.getElementById('clock');
+  let clockText = '';
 
   function tick() {
     const d = new Date();
     const day = d.toLocaleDateString(undefined, { weekday: 'short' });
     const md = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const t = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    document.getElementById('clock').textContent = day + ' ' + md + '  ' + t;
+    clockText = day + ' ' + md + '  ' + t;
+    renderClock();
   }
+
+  function renderClock() {
+    clockEl.textContent = state.clockMode === 1 ? 'Uptime: 15 years in QA'
+      : state.clockMode === 2 ? '0 bugs shipped today'
+      : clockText;
+  }
+
+  clockEl.addEventListener('click', () => {
+    state.clockMode = (state.clockMode + 1) % 3;
+    renderClock();
+  });
+
   tick();
   setInterval(tick, 10000);
 
@@ -200,7 +285,79 @@
 
   document.documentElement.dataset.theme = CONFIG.theme;
   document.getElementById('desktop').classList.toggle('no-pattern', !CONFIG.pattern);
-  document.getElementById('scanlines').classList.toggle('on', !!CONFIG.scanlines);
+
+  const scanlinesEl = document.getElementById('scanlines');
+  function setScanlines(on) {
+    state.scanlinesOn = on;
+    scanlinesEl.classList.toggle('on', on);
+  }
+  setScanlines(CONFIG.scanlines);
+
+  // ═══ Desktop clean-up wiggle ═══
+
+  const iconGroup = document.getElementById('desktop-icons');
+  const trashIcon = document.getElementById('trash-icon');
+  let wiggleTimer;
+  function cleanUp() {
+    clearTimeout(wiggleTimer);
+    iconGroup.classList.add('wiggle');
+    trashIcon.classList.add('wiggle');
+    wiggleTimer = setTimeout(() => {
+      iconGroup.classList.remove('wiggle');
+      trashIcon.classList.remove('wiggle');
+    }, 1000);
+  }
+
+  // ═══ Alert dialog ═══
+
+  const dialogEl = document.getElementById('dialog');
+  const dialogTitle = document.getElementById('dialog-title');
+  const dialogSub = document.getElementById('dialog-sub');
+  function showDialog(title, sub) {
+    dialogTitle.textContent = title;
+    dialogSub.textContent = sub;
+    dialogEl.classList.add('on');
+  }
+  document.getElementById('dialog-ok').addEventListener('click', () => dialogEl.classList.remove('on'));
+
+  // ═══ Boot screen ═══
+
+  const bootEl = document.getElementById('boot');
+  let bootTimer;
+  function endBoot() { clearTimeout(bootTimer); bootEl.classList.add('done'); }
+  function reboot() {
+    clearTimeout(bootTimer);
+    bootEl.classList.remove('done');
+    bootTimer = setTimeout(endBoot, 2400);
+  }
+  bootEl.addEventListener('click', endBoot);
+  bootTimer = setTimeout(endBoot, 2400);
+
+  // ═══ hello.txt notepad (type-on intro, then editable) ═══
+
+  const helloEl = document.getElementById('hello-text');
+  let typeTimer = null;
+  function startTyping() {
+    clearInterval(typeTimer);
+    let n = 0;
+    typeTimer = setInterval(() => {
+      n += 2;
+      helloEl.value = HELLO_TEXT.slice(0, Math.min(n, HELLO_TEXT.length));
+      if (n >= HELLO_TEXT.length) { clearInterval(typeTimer); typeTimer = null; }
+    }, 18);
+  }
+  helloEl.addEventListener('focus', () => {
+    if (typeTimer) {
+      clearInterval(typeTimer);
+      typeTimer = null;
+      helloEl.value = HELLO_TEXT;
+    }
+  });
+  startTyping();
+
+  // ═══ README notepad ═══
+
+  document.getElementById('readme-text').value = README_TEXT;
 
   // ═══ Mail form ═══
 
@@ -252,6 +409,241 @@
     document.getElementById('booking-has').style.display = 'none';
     document.getElementById('booking-empty').style.display = '';
   }
+
+  // ═══ Trash items ═══
+
+  const trashWin = winEls.trash;
+  const trashStatusEl = document.getElementById('trash-status');
+  const trashListEl = document.getElementById('trash-list');
+  const dragGhost = document.getElementById('drag-ghost');
+  const dragGhostName = document.getElementById('drag-ghost-name');
+  const puffEl = document.getElementById('puff');
+  let puffTimer;
+
+  function trashStatusText() {
+    const n = state.trashItems.length;
+    if (n === 0) return '0 items · squeaky clean';
+    if (n === 1) return '1 item · hoarding regret';
+    return n + ' items · hoarding regret';
+  }
+
+  function renderTrash() {
+    const items = state.trashItems;
+    trashWin.classList.toggle('trash-clean', items.length === 0);
+    trashStatusEl.textContent = trashStatusText();
+    trashListEl.innerHTML = '';
+    items.forEach((item, i) => {
+      const row = document.createElement('div');
+      row.className = 'trash-item';
+      row.innerHTML =
+        '<div class="file"><div class="l1"></div><div class="l2"></div></div>' +
+        '<div class="meta"><div class="name"></div><div class="note"></div></div>';
+      row.querySelector('.name').textContent = item.name;
+      row.querySelector('.note').textContent = item.note;
+      row.addEventListener('pointerdown', (e) => startTrashDrag(i, e));
+      trashListEl.appendChild(row);
+    });
+  }
+
+  function emptyTrash() {
+    state.trashItems = [];
+    renderTrash();
+  }
+
+  document.getElementById('trash-empty-btn').addEventListener('click', emptyTrash);
+
+  function startTrashDrag(i, e) {
+    if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+    const item = state.trashItems[i];
+    if (!item) return;
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY;
+    let dragging = false;
+    function move(ev) {
+      if (!dragging && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
+      dragging = true;
+      dragGhost.classList.add('on');
+      dragGhostName.textContent = item.name;
+      dragGhost.style.left = ev.clientX + 'px';
+      dragGhost.style.top = ev.clientY + 'px';
+    }
+    function up(ev) {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      dragGhost.classList.remove('on');
+      if (!dragging) return;
+      const r = trashWin.getBoundingClientRect();
+      const inside = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+      if (!inside) {
+        state.trashItems = state.trashItems.filter((_, j) => j !== i);
+        renderTrash();
+        puffEl.style.left = ev.clientX + 'px';
+        puffEl.style.top = ev.clientY + 'px';
+        puffEl.classList.remove('on');
+        // restart the puff animation
+        void puffEl.offsetWidth;
+        puffEl.classList.add('on');
+        clearTimeout(puffTimer);
+        puffTimer = setTimeout(() => puffEl.classList.remove('on'), 600);
+      }
+    }
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  renderTrash();
+
+  // ═══ Pixel corgi ═══
+
+  const catEl = document.getElementById('cat');
+  let catTimer;
+
+  function applyCat() {
+    const cat = state.cat;
+    catEl.classList.toggle('on', cat.mode !== 'hidden');
+    catEl.classList.toggle('bob', cat.mode === 'walk' || cat.mode === 'dash');
+    catEl.style.transition = 'left ' + cat.dur + 's linear';
+    catEl.style.left = cat.x + 'px';
+    catEl.style.transform = 'scaleX(' + cat.dir + ')';
+  }
+
+  function catStep() {
+    const cat = state.cat;
+    if (cat.mode === 'hidden') {
+      const vw = window.innerWidth;
+      const fromLeft = Math.random() < 0.5;
+      state.cat = { x: fromLeft ? -60 : vw + 20, dir: fromLeft ? 1 : -1, mode: 'sit', dur: 0 };
+      applyCat();
+      catTimer = setTimeout(catWalk, 100);
+    } else if (cat.mode === 'walk' && Math.random() < 0.5) {
+      state.cat = { ...cat, mode: 'sit', dur: 0 };
+      applyCat();
+      catTimer = setTimeout(catWalk, 2000 + Math.random() * 4000);
+    } else {
+      catWalk();
+    }
+  }
+
+  function catWalk() {
+    const vw = window.innerWidth;
+    const cat = state.cat;
+    const target = 40 + Math.random() * Math.max(100, vw - 200);
+    const dur = Math.max(1, Math.abs(target - cat.x) / 40);
+    state.cat = { x: target, dir: target > cat.x ? 1 : -1, mode: 'walk', dur };
+    applyCat();
+    catTimer = setTimeout(catStep, dur * 1000 + 100);
+  }
+
+  function catDash() {
+    clearTimeout(catTimer);
+    const vw = window.innerWidth;
+    const cat = state.cat;
+    const target = cat.dir > 0 ? vw + 80 : -80;
+    const dur = Math.max(0.4, Math.abs(target - cat.x) / 300);
+    state.cat = { x: target, dir: cat.dir, mode: 'dash', dur };
+    applyCat();
+    catTimer = setTimeout(() => {
+      state.cat = { x: -60, dir: 1, mode: 'hidden', dur: 0 };
+      applyCat();
+      catTimer = setTimeout(catStep, 15000 + Math.random() * 15000);
+    }, dur * 1000 + 100);
+  }
+
+  catEl.addEventListener('click', catDash);
+  catTimer = setTimeout(catStep, 6000);
+
+  // ═══ Konami confetti ═══
+
+  const confettiEl = document.getElementById('confetti');
+  let confettiTimer;
+  function dropConfetti() {
+    const colors = ['#5c5cc4', '#c4552f', '#7ee2a8', '#e8c56a'];
+    confettiEl.innerHTML = '';
+    for (let i = 0; i < 28; i++) {
+      const p = document.createElement('div');
+      p.className = 'piece';
+      p.textContent = '✓';
+      p.style.left = (Math.random() * 100).toFixed(1) + '%';
+      p.style.fontSize = (12 + Math.random() * 16).toFixed(0) + 'px';
+      p.style.color = colors[i % colors.length];
+      p.style.animationDuration = (2 + Math.random() * 2).toFixed(2) + 's';
+      p.style.animationDelay = (Math.random() * 0.8).toFixed(2) + 's';
+      confettiEl.appendChild(p);
+    }
+    confettiEl.classList.add('on');
+    clearTimeout(confettiTimer);
+    confettiTimer = setTimeout(() => { confettiEl.classList.remove('on'); confettiEl.innerHTML = ''; }, 5200);
+  }
+
+  const KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a'];
+  let konamiIdx = 0;
+  window.addEventListener('keydown', (e) => {
+    const k = (e.key || '').toLowerCase();
+    konamiIdx = k === KONAMI[konamiIdx] ? konamiIdx + 1 : (k === KONAMI[0] ? 1 : 0);
+    if (konamiIdx === KONAMI.length) { konamiIdx = 0; dropConfetti(); }
+  });
+
+  // ═══ Screensaver (starfield) ═══
+
+  const saverEl = document.getElementById('saver');
+  const saverCanvas = document.getElementById('saver-canvas');
+  let idleTimer, starsRaf = null, saverOn = false;
+
+  function startStars() {
+    const ctx = saverCanvas.getContext('2d');
+    const W = saverCanvas.width = saverCanvas.offsetWidth;
+    const H = saverCanvas.height = saverCanvas.offsetHeight;
+    const N = 220;
+    const stars = Array.from({ length: N }, () => ({
+      x: (Math.random() - 0.5) * W,
+      y: (Math.random() - 0.5) * H,
+      z: Math.random() * W,
+    }));
+    const speed = 6;
+    function frame() {
+      if (!saverOn) { starsRaf = null; return; }
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
+      for (const s of stars) {
+        s.z -= speed;
+        if (s.z <= 1) { s.x = (Math.random() - 0.5) * W; s.y = (Math.random() - 0.5) * H; s.z = W; }
+        const k = 128 / s.z;
+        const px = s.x * k + W / 2;
+        const py = s.y * k + H / 2;
+        if (px < 0 || px >= W || py < 0 || py >= H) continue;
+        const depth = 1 - s.z / W;
+        const size = Math.max(1, Math.round(depth * 3));
+        const b = Math.round(120 + depth * 135);
+        ctx.fillStyle = 'rgb(' + b + ',' + b + ',' + b + ')';
+        ctx.fillRect(Math.round(px), Math.round(py), size, size);
+      }
+      starsRaf = requestAnimationFrame(frame);
+    }
+    starsRaf = requestAnimationFrame(frame);
+  }
+
+  function sleep() {
+    if (saverOn) return;
+    saverOn = true;
+    saverEl.classList.add('on');
+    startStars();
+  }
+
+  function resetIdle() {
+    if (saverOn) {
+      saverOn = false;
+      saverEl.classList.remove('on');
+      if (starsRaf) { cancelAnimationFrame(starsRaf); starsRaf = null; }
+    }
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(sleep, 45000);
+  }
+
+  saverEl.addEventListener('click', resetIdle);
+  window.addEventListener('pointermove', resetIdle);
+  window.addEventListener('pointerdown', resetIdle);
+  window.addEventListener('keydown', resetIdle);
+  resetIdle();
 
   renderAll();
 })();
