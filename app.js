@@ -18,6 +18,8 @@
     calendar: [740, 560],
   };
 
+  const MIN_SIZE = { w: 220, h: 140 };
+
   const INITIAL = {
     open: { resume: true, projects: false, contact: true, contacts: false, mail: false, trash: false, calendar: false },
     pos: {
@@ -35,6 +37,7 @@
   const state = {
     open: { ...INITIAL.open },
     pos: Object.fromEntries(Object.entries(INITIAL.pos).map(([k, v]) => [k, { ...v }])),
+    size: Object.fromEntries(Object.entries(SIZES).map(([k, [w, h]]) => [k, { w, h }])),
     z: { ...INITIAL.z },
     shaded: {},
     maxed: {},
@@ -47,7 +50,7 @@
   }
 
   function clamp(id) {
-    const [bw, bh] = SIZES[id];
+    const { w: bw, h: bh } = state.size[id];
     const maxed = !!state.maxed[id];
     const shaded = !!state.shaded[id];
     const vw = window.innerWidth;
@@ -77,6 +80,7 @@
     el.style.zIndex = c.z;
     el.classList.toggle('open', !!state.open[id]);
     el.classList.toggle('shaded', !!state.shaded[id]);
+    el.classList.toggle('maxed', !!state.maxed[id]);
   }
 
   function renderAll() {
@@ -134,6 +138,32 @@
     window.addEventListener('pointerup', up);
   }
 
+  function startResize(id, e) {
+    if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+    if (state.maxed[id] || state.shaded[id]) return;
+    e.preventDefault();
+    e.stopPropagation();
+    focusWin(id);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const start = { mx: e.clientX, my: e.clientY, w: state.size[id].w, h: state.size[id].h };
+    function move(ev) {
+      const maxW = vw - state.pos[id].x - 12;
+      const maxH = vh - state.pos[id].y - 12;
+      state.size[id] = {
+        w: Math.max(MIN_SIZE.w, Math.min(start.w + (ev.clientX - start.mx), maxW)),
+        h: Math.max(MIN_SIZE.h, Math.min(start.h + (ev.clientY - start.my), maxH)),
+      };
+      render(id);
+    }
+    function up() {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    }
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
   // Wire up window chrome + icons
 
   for (const id of Object.keys(SIZES)) {
@@ -144,6 +174,8 @@
     el.querySelector('[data-action="shade"]').addEventListener('click', (e) => { e.stopPropagation(); shadeWin(id); });
     el.querySelector('[data-action="zoom"]').addEventListener('click', (e) => { e.stopPropagation(); zoomWin(id); });
     el.querySelector('[data-drag]').addEventListener('pointerdown', (e) => startDrag(id, e));
+    const resizeHandle = el.querySelector('[data-resize]');
+    if (resizeHandle) resizeHandle.addEventListener('pointerdown', (e) => startResize(id, e));
   }
 
   document.querySelectorAll('.icon[data-open]').forEach((btn) => {

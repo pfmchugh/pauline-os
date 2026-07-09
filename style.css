@@ -365,6 +365,22 @@ input, textarea { font-family: Verdana, Geneva, sans-serif; }
 }
 .win.shaded .win-body { display: none; }
 
+.win-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background-image:
+    linear-gradient(135deg, transparent 0, transparent 3px, var(--bevel-dark) 3px, var(--bevel-dark) 4px, transparent 4px, transparent 6px, var(--bevel-dark) 6px, var(--bevel-dark) 7px, transparent 7px, transparent 9px, var(--bevel-dark) 9px, var(--bevel-dark) 10px, transparent 10px);
+}
+.win.shaded .win-resize,
+.win.maxed .win-resize {
+  display: none;
+}
+
 /* Resume window */
 
 .resume-scroll {
