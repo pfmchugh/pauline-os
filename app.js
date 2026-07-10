@@ -10,6 +10,11 @@
 
   const EMAIL = 'mchughpf@gmail.com';
 
+  // FormSubmit.co AJAX endpoint — delivers form submissions to EMAIL without
+  // a backend. One-time setup: the first submission from the live site
+  // triggers an activation email; click its confirmation link once.
+  const MAIL_ENDPOINT = 'https://formsubmit.co/ajax/' + EMAIL;
+
   const HELLO_TEXT = "═══ HELLO ═══\n\nHi, I'm Pauline. Welcome to my desktop.\nPoke around — my resume is on the desktop,\nand you can drop me a line with Mail.\n\nemail ...... mchughpf@gmail.com\nlocation ... Houston, TX\nlinkedin ... linkedin.com/in/pfmchugh\n\nSay hi — I read everything.";
 
   const README_TEXT = "═══ README ═══\n\nWhat's cooking:\n\n- pauline-os v2 (you are here)\n- writing up QA war stories\n- more apps for this desktop\n\nCheck back soon — this folder\nwon't stay empty for long.";
@@ -256,21 +261,29 @@
   // ═══ Menu bar clock (with easter-egg cycle) ═══
 
   const clockEl = document.getElementById('clock');
-  let clockText = '';
+  let clockDate = '';
+  let clockTime = '';
 
   function tick() {
     const d = new Date();
     const day = d.toLocaleDateString(undefined, { weekday: 'short' });
     const md = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    const t = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    clockText = day + ' ' + md + '  ' + t;
+    clockDate = day + ' ' + md;
+    clockTime = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
     renderClock();
   }
 
   function renderClock() {
-    clockEl.textContent = state.clockMode === 1 ? 'Uptime: 15 years in QA'
-      : state.clockMode === 2 ? '0 bugs shipped today'
-      : clockText;
+    if (state.clockMode === 1) { clockEl.textContent = 'Uptime: 15 years in QA'; return; }
+    if (state.clockMode === 2) { clockEl.textContent = '0 bugs shipped today'; return; }
+    // date and time are separate spans so narrow screens can drop the date
+    const date = document.createElement('span');
+    date.className = 'clock-date';
+    date.textContent = clockDate;
+    const time = document.createElement('span');
+    time.className = 'clock-time';
+    time.textContent = clockTime;
+    clockEl.replaceChildren(date, time);
   }
 
   clockEl.addEventListener('click', () => {
@@ -364,9 +377,12 @@
   const mailForm = document.getElementById('mail-form');
   const mailSent = document.getElementById('mail-sent');
   const mailError = document.getElementById('mail-error');
+  const mailSendBtn = mailForm.querySelector('.mail-send');
+  let mailSending = false;
 
   mailForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (mailSending) return;
     const from = document.getElementById('mail-from').value.trim();
     const subj = document.getElementById('mail-subject').value.trim();
     const msg = document.getElementById('mail-message').value.trim();
@@ -379,8 +395,37 @@
       return;
     }
     mailError.textContent = '';
-    mailForm.style.display = 'none';
-    mailSent.classList.add('show');
+    mailSending = true;
+    mailSendBtn.disabled = true;
+    mailSendBtn.textContent = 'Sending…';
+    fetch(MAIL_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        email: from,
+        _replyto: from,
+        _subject: '[pauline-os] ' + subj,
+        message: msg,
+        _template: 'table',
+        _captcha: 'false',
+      }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(() => {
+        mailForm.style.display = 'none';
+        mailSent.classList.add('show');
+      })
+      .catch(() => {
+        mailError.textContent = "Couldn't send — try again, or email me directly.";
+      })
+      .finally(() => {
+        mailSending = false;
+        mailSendBtn.disabled = false;
+        mailSendBtn.textContent = 'Send ▸';
+      });
   });
 
   document.getElementById('mail-reset').addEventListener('click', () => {

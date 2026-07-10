@@ -124,7 +124,17 @@ test.describe('menu bar', () => {
     await expect(page.locator('#desktop-icons')).not.toHaveClass(/wiggle/, { timeout: 2000 });
   });
 
-  test('Special > Empty Trash clears items and opens the trash', async ({ page }) => {
+  test('the Special items live under the Pauline OS brand menu', async ({ page }) => {
+    const brandItem = page.locator('.menu-item[data-menu="special"]');
+    await expect(brandItem.locator('.menu-label')).toHaveText(/Pauline ?OS/);
+    await openMenu(page, 'special');
+    await expect(brandItem).toHaveClass(/active/);
+    for (const cmd of ['eject', 'empty-trash', 'restart']) {
+      await expect(brandItem.locator(`.menu-option[data-cmd="${cmd}"]`)).toBeVisible();
+    }
+  });
+
+  test('Pauline OS > Empty Trash clears items and opens the trash', async ({ page }) => {
     await openMenu(page, 'special');
     await clickCmd(page, 'special', 'empty-trash');
     await expect(page.locator('#win-trash')).toHaveClass(/open/);
@@ -132,11 +142,33 @@ test.describe('menu bar', () => {
     await expect(page.locator('#win-trash')).toHaveClass(/trash-clean/);
   });
 
-  test('Special > Restart replays the boot screen', async ({ page }) => {
+  test('Pauline OS > Restart replays the boot screen', async ({ page }) => {
     await openMenu(page, 'special');
     await clickCmd(page, 'special', 'restart');
     await expect(page.locator('#boot')).not.toHaveClass(/done/);
     await expect(page.locator('#boot')).toHaveClass(/done/, { timeout: 4000 });
+  });
+
+  for (const width of [375, 320]) {
+    test(`menu bar fits a ${width}px viewport with the clock fully visible`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 667 });
+      const bar = await page.locator('#menu-bar').evaluate((el) => ({
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+      }));
+      expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
+      const clock = await page.locator('#clock').boundingBox();
+      expect(clock.x).toBeGreaterThanOrEqual(0);
+      expect(clock.x + clock.width).toBeLessThanOrEqual(width);
+      // narrow screens drop the date but must still show the time
+      await expect(page.locator('#clock .clock-time')).toBeVisible();
+      await expect(page.locator('#clock .clock-date')).toBeHidden();
+    });
+  }
+
+  test('the clock shows date and time on desktop viewports', async ({ page }) => {
+    await expect(page.locator('#clock .clock-date')).toBeVisible();
+    await expect(page.locator('#clock .clock-time')).toBeVisible();
   });
 });
 
@@ -181,6 +213,94 @@ test.describe('notepads', () => {
   });
 });
 
+test.describe('mail', () => {
+  const openMail = async (page) => {
+    await page.locator('.icon[data-open="mail"]').click();
+    await expect(page.locator('#win-mail')).toHaveClass(/open/);
+  };
+
+  /**
+   * Stub the FormSubmit.co AJAX endpoint so tests never hit the real
+   * service. Returns the list of intercepted request payloads.
+   */
+  const mockMailEndpoint = async (page, { status = 200 } = {}) => {
+    const sent = [];
+    await page.route('**/formsubmit.co/ajax/**', async (route) => {
+      sent.push(route.request().postDataJSON());
+      await route.fulfill({
+        status,
+        contentType: 'application/json',
+        body: JSON.stringify(status === 200
+          ? { success: 'true', message: 'The form was submitted successfully.' }
+          : { success: 'false', message: 'error' }),
+      });
+    });
+    return sent;
+  };
+
+  const fillMail = async (page, from = 'someone@example.com') => {
+    await page.fill('#mail-from', from);
+    await page.fill('#mail-subject', 'Hello');
+    await page.fill('#mail-message', 'Hi there');
+  };
+
+  test('submitting with empty fields shows an error', async ({ page }) => {
+    await openMail(page);
+    await page.locator('.mail-send').click();
+    await expect(page.locator('#mail-error')).toHaveText('All fields are required.');
+    await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+  });
+
+  test('a malformed sender address is rejected without a network call', async ({ page }) => {
+    const sent = await mockMailEndpoint(page);
+    await openMail(page);
+    await fillMail(page, 'not-an-email');
+    await page.locator('.mail-send').click();
+    await expect(page.locator('#mail-error')).toHaveText("That email doesn't look right.");
+    await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+    expect(sent).toHaveLength(0);
+  });
+
+  test('a valid submission posts to FormSubmit and shows the sent screen', async ({ page }) => {
+    const sent = await mockMailEndpoint(page);
+    await openMail(page);
+    await fillMail(page);
+    await page.locator('.mail-send').click();
+    await expect(page.locator('#mail-sent')).toHaveClass(/show/);
+    await expect(page.locator('#mail-form')).toBeHidden();
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      _replyto: 'someone@example.com',
+      _subject: '[pauline-os] Hello',
+      message: 'Hi there',
+    });
+  });
+
+  test('a delivery failure shows an error and keeps the form', async ({ page }) => {
+    await mockMailEndpoint(page, { status: 500 });
+    await openMail(page);
+    await fillMail(page);
+    await page.locator('.mail-send').click();
+    await expect(page.locator('#mail-error')).toHaveText(/Couldn't send/);
+    await expect(page.locator('#mail-form')).toBeVisible();
+    await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+    // the send button recovers so the visitor can retry
+    await expect(page.locator('.mail-send')).toBeEnabled();
+    await expect(page.locator('.mail-send')).toHaveText('Send ▸');
+  });
+
+  test('"Write another" resets the form', async ({ page }) => {
+    await mockMailEndpoint(page);
+    await openMail(page);
+    await fillMail(page);
+    await page.locator('.mail-send').click();
+    await page.locator('#mail-reset').click();
+    await expect(page.locator('#mail-form')).toBeVisible();
+    await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+    await expect(page.locator('#mail-from')).toHaveValue('');
+  });
+});
+
 test.describe('trash', () => {
   test('starts with three joke files', async ({ page }) => {
     await page.locator('#trash-icon').click();
@@ -205,6 +325,15 @@ test.describe('trash', () => {
 
     await expect(items).toHaveCount(2);
     await expect(page.locator('#trash-status')).toHaveText(/2 items/);
+  });
+
+  test('the icon lid sits flush on the can and overhangs it', async ({ page }) => {
+    const lid = await page.locator('#trash-icon .icon-trash-top').boundingBox();
+    const can = await page.locator('#trash-icon .icon-trash').boundingBox();
+    // lid bottom edge touches the can's top edge (no floating gap)
+    expect(Math.abs(lid.y + lid.height - can.y)).toBeLessThanOrEqual(1);
+    // lid is wider than the can, like the classic desktop trash icon
+    expect(lid.width).toBeGreaterThan(can.width);
   });
 
   test('Empty Trash button clears the list', async ({ page }) => {
