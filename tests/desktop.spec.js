@@ -124,7 +124,17 @@ test.describe('menu bar', () => {
     await expect(page.locator('#desktop-icons')).not.toHaveClass(/wiggle/, { timeout: 2000 });
   });
 
-  test('Special > Empty Trash clears items and opens the trash', async ({ page }) => {
+  test('the Special items live under the Pauline OS brand menu', async ({ page }) => {
+    const brandItem = page.locator('.menu-item[data-menu="special"]');
+    await expect(brandItem.locator('.menu-label')).toHaveText(/Pauline ?OS/);
+    await openMenu(page, 'special');
+    await expect(brandItem).toHaveClass(/active/);
+    for (const cmd of ['eject', 'empty-trash', 'restart']) {
+      await expect(brandItem.locator(`.menu-option[data-cmd="${cmd}"]`)).toBeVisible();
+    }
+  });
+
+  test('Pauline OS > Empty Trash clears items and opens the trash', async ({ page }) => {
     await openMenu(page, 'special');
     await clickCmd(page, 'special', 'empty-trash');
     await expect(page.locator('#win-trash')).toHaveClass(/open/);
@@ -132,12 +142,26 @@ test.describe('menu bar', () => {
     await expect(page.locator('#win-trash')).toHaveClass(/trash-clean/);
   });
 
-  test('Special > Restart replays the boot screen', async ({ page }) => {
+  test('Pauline OS > Restart replays the boot screen', async ({ page }) => {
     await openMenu(page, 'special');
     await clickCmd(page, 'special', 'restart');
     await expect(page.locator('#boot')).not.toHaveClass(/done/);
     await expect(page.locator('#boot')).toHaveClass(/done/, { timeout: 4000 });
   });
+
+  for (const width of [375, 320]) {
+    test(`menu bar fits a ${width}px viewport with the clock fully visible`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 667 });
+      const bar = await page.locator('#menu-bar').evaluate((el) => ({
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+      }));
+      expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
+      const clock = await page.locator('#clock').boundingBox();
+      expect(clock.x).toBeGreaterThanOrEqual(0);
+      expect(clock.x + clock.width).toBeLessThanOrEqual(width);
+    });
+  }
 });
 
 test.describe('easter eggs', () => {
@@ -181,6 +205,59 @@ test.describe('notepads', () => {
   });
 });
 
+test.describe('mail', () => {
+  const openMail = async (page) => {
+    await page.locator('.icon[data-open="mail"]').click();
+    await expect(page.locator('#win-mail')).toHaveClass(/open/);
+  };
+
+  test('submitting with empty fields shows an error', async ({ page }) => {
+    await openMail(page);
+    await page.locator('.mail-send').click();
+    await expect(page.locator('#mail-error')).toHaveText('All fields are required.');
+    await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+  });
+
+  test('a malformed sender address is rejected', async ({ page }) => {
+    await openMail(page);
+    await page.fill('#mail-from', 'not-an-email');
+    await page.fill('#mail-subject', 'Hello');
+    await page.fill('#mail-message', 'Hi there');
+    await page.locator('.mail-send').click();
+    await expect(page.locator('#mail-error')).toHaveText("That email doesn't look right.");
+    await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+  });
+
+  test('a valid submission shows the sent screen', async ({ page }) => {
+    // NOTE: today the mail form is client-side only — no message is actually
+    // transmitted anywhere. This test pins that behavior; if the form is ever
+    // wired to a real backend, update the request assertion below.
+    const requests = [];
+    page.on('request', (r) => requests.push(r.url()));
+    await openMail(page);
+    await page.fill('#mail-from', 'someone@example.com');
+    await page.fill('#mail-subject', 'Hello');
+    await page.fill('#mail-message', 'Hi there');
+    requests.length = 0;
+    await page.locator('.mail-send').click();
+    await expect(page.locator('#mail-sent')).toHaveClass(/show/);
+    await expect(page.locator('#mail-form')).toBeHidden();
+    expect(requests).toEqual([]);
+  });
+
+  test('"Write another" resets the form', async ({ page }) => {
+    await openMail(page);
+    await page.fill('#mail-from', 'someone@example.com');
+    await page.fill('#mail-subject', 'Hello');
+    await page.fill('#mail-message', 'Hi there');
+    await page.locator('.mail-send').click();
+    await page.locator('#mail-reset').click();
+    await expect(page.locator('#mail-form')).toBeVisible();
+    await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+    await expect(page.locator('#mail-from')).toHaveValue('');
+  });
+});
+
 test.describe('trash', () => {
   test('starts with three joke files', async ({ page }) => {
     await page.locator('#trash-icon').click();
@@ -205,6 +282,15 @@ test.describe('trash', () => {
 
     await expect(items).toHaveCount(2);
     await expect(page.locator('#trash-status')).toHaveText(/2 items/);
+  });
+
+  test('the icon lid sits flush on the can and overhangs it', async ({ page }) => {
+    const lid = await page.locator('#trash-icon .icon-trash-top').boundingBox();
+    const can = await page.locator('#trash-icon .icon-trash').boundingBox();
+    // lid bottom edge touches the can's top edge (no floating gap)
+    expect(Math.abs(lid.y + lid.height - can.y)).toBeLessThanOrEqual(1);
+    // lid is wider than the can, like the classic desktop trash icon
+    expect(lid.width).toBeGreaterThan(can.width);
   });
 
   test('Empty Trash button clears the list', async ({ page }) => {

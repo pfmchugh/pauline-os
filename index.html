@@ -16,7 +16,15 @@
 
   <!-- ═══ Menu bar ═══ -->
   <div id="menu-bar" class="pixel">
-    <div class="brand">Pauline&nbsp;OS</div>
+    <div class="menu-item" data-menu="special">
+      <span class="menu-label brand">Pauline&nbsp;OS</span>
+      <div class="menu-dropdown">
+        <div class="menu-option" data-cmd="eject">Eject Pauline</div>
+        <div class="menu-option" data-cmd="empty-trash">Empty Trash…</div>
+        <div class="menu-sep"></div>
+        <div class="menu-option" data-cmd="restart">Restart</div>
+      </div>
+    </div>
 
     <div class="menu-item" data-menu="file">
       <span class="menu-label">File</span>
@@ -42,16 +50,6 @@
       <div class="menu-dropdown">
         <div class="menu-option" data-cmd="clean-up">Clean Up Desktop</div>
         <div class="menu-option" data-cmd="toggle-scanlines">Toggle Scanlines</div>
-      </div>
-    </div>
-
-    <div class="menu-item" data-menu="special">
-      <span class="menu-label">Special</span>
-      <div class="menu-dropdown">
-        <div class="menu-option" data-cmd="eject">Eject Pauline</div>
-        <div class="menu-option" data-cmd="empty-trash">Empty Trash…</div>
-        <div class="menu-sep"></div>
-        <div class="menu-option" data-cmd="restart">Restart</div>
       </div>
     </div>
 

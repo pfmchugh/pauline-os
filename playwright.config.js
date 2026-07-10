@@ -16,7 +16,17 @@ module.exports = defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        // Allow overriding the browser binary (e.g. a system-installed
+        // Chromium in sandboxed environments where downloads are blocked).
+        ...(process.env.CHROMIUM_PATH
+          ? { launchOptions: { executablePath: process.env.CHROMIUM_PATH } }
+          : {}),
+      },
+    },
   ],
   // Serve the static site for the duration of the run.
   webServer: {
