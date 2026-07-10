@@ -164,9 +164,21 @@ input, textarea { font-family: Verdana, Geneva, sans-serif; }
 .menu-sep { height: 1px; background: var(--bevel-dark); margin: 3px 4px; }
 
 #menu-bar .spacer { flex: 1; }
-#menu-bar .clock { padding: 2px 4px; white-space: nowrap; cursor: default; }
+#menu-bar .clock {
+  padding: 2px 4px;
+  white-space: nowrap;
+  cursor: default;
+  /* never push the menu bar wider than the viewport */
+  min-width: 0;
+  overflow: hidden;
+}
 #menu-bar .clock:hover { background: var(--accent); color: #fff; }
+#menu-bar .clock .clock-date { margin-right: 8px; }
 
+@media (max-width: 440px) {
+  /* time only — the date doesn't fit next to four menus on phones */
+  #menu-bar .clock .clock-date { display: none; }
+}
 @media (max-width: 360px) {
   #menu-bar { font-size: 10px; padding: 0 6px; gap: 0; }
   #menu-bar .menu-label { padding: 2px 5px; }

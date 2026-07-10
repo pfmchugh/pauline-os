@@ -160,8 +160,16 @@ test.describe('menu bar', () => {
       const clock = await page.locator('#clock').boundingBox();
       expect(clock.x).toBeGreaterThanOrEqual(0);
       expect(clock.x + clock.width).toBeLessThanOrEqual(width);
+      // narrow screens drop the date but must still show the time
+      await expect(page.locator('#clock .clock-time')).toBeVisible();
+      await expect(page.locator('#clock .clock-date')).toBeHidden();
     });
   }
+
+  test('the clock shows date and time on desktop viewports', async ({ page }) => {
+    await expect(page.locator('#clock .clock-date')).toBeVisible();
+    await expect(page.locator('#clock .clock-time')).toBeVisible();
+  });
 });
 
 test.describe('easter eggs', () => {

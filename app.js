@@ -261,21 +261,29 @@
   // ═══ Menu bar clock (with easter-egg cycle) ═══
 
   const clockEl = document.getElementById('clock');
-  let clockText = '';
+  let clockDate = '';
+  let clockTime = '';
 
   function tick() {
     const d = new Date();
     const day = d.toLocaleDateString(undefined, { weekday: 'short' });
     const md = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    const t = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    clockText = day + ' ' + md + '  ' + t;
+    clockDate = day + ' ' + md;
+    clockTime = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
     renderClock();
   }
 
   function renderClock() {
-    clockEl.textContent = state.clockMode === 1 ? 'Uptime: 15 years in QA'
-      : state.clockMode === 2 ? '0 bugs shipped today'
-      : clockText;
+    if (state.clockMode === 1) { clockEl.textContent = 'Uptime: 15 years in QA'; return; }
+    if (state.clockMode === 2) { clockEl.textContent = '0 bugs shipped today'; return; }
+    // date and time are separate spans so narrow screens can drop the date
+    const date = document.createElement('span');
+    date.className = 'clock-date';
+    date.textContent = clockDate;
+    const time = document.createElement('span');
+    time.className = 'clock-time';
+    time.textContent = clockTime;
+    clockEl.replaceChildren(date, time);
   }
 
   clockEl.addEventListener('click', () => {
