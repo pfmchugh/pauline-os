@@ -10,10 +10,14 @@
 
   const EMAIL = 'mchughpf@gmail.com';
 
-  // FormSubmit.co AJAX endpoint — delivers form submissions to EMAIL without
-  // a backend. One-time setup: the first submission from the live site
-  // triggers an activation email; click its confirmation link once.
-  const MAIL_ENDPOINT = 'https://formsubmit.co/ajax/' + EMAIL;
+  // FormSubmit.co AJAX endpoint — delivers form submissions to MAIL_TARGET
+  // without a backend. One-time setup: the first submission from the live
+  // site triggers an activation email; click its confirmation link once.
+  // Anti-scraping: after activating, replace MAIL_TARGET with the random
+  // alias from https://formsubmit.co (it delivers to the same inbox but
+  // keeps the address out of the page source, and can be revoked if abused).
+  const MAIL_TARGET = EMAIL;
+  const MAIL_ENDPOINT = 'https://formsubmit.co/ajax/' + MAIL_TARGET;
 
   const HELLO_TEXT = "═══ HELLO ═══\n\nHi, I'm Pauline. Welcome to my desktop.\nPoke around — my resume is on the desktop,\nand you can drop me a line with Mail.\n\nemail ...... mchughpf@gmail.com\nlocation ... Houston, TX\nlinkedin ... linkedin.com/in/pfmchugh\n\nSay hi — I read everything.";
 
@@ -383,6 +387,13 @@
   mailForm.addEventListener('submit', (e) => {
     e.preventDefault();
     if (mailSending) return;
+    // Honeypot: humans never see the field, so anything in it is a bot.
+    // Show the sent screen without sending, so the bot moves on satisfied.
+    if (document.getElementById('mail-honey').value) {
+      mailForm.style.display = 'none';
+      mailSent.classList.add('show');
+      return;
+    }
     const from = document.getElementById('mail-from').value.trim();
     const subj = document.getElementById('mail-subject').value.trim();
     const msg = document.getElementById('mail-message').value.trim();

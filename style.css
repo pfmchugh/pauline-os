@@ -715,6 +715,15 @@ input, textarea { font-family: Verdana, Geneva, sans-serif; }
   background: transparent;
 }
 
+/* Honeypot — parked far off-screen (not display:none, so bots still fill it) */
+.mail-honey {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+}
+
 #mail-message {
   flex: 1;
   min-height: 0;

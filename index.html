@@ -320,6 +320,8 @@
         <div class="mail-row"><span class="k">TO</span><span class="v">Pauline McHugh &lt;mchughpf@gmail.com&gt;</span></div>
         <div class="mail-row editable"><span class="k">FROM</span><input id="mail-from" type="text" placeholder="you@email.com" autocomplete="email"></div>
         <div class="mail-row editable"><span class="k">SUBJECT</span><input id="mail-subject" type="text" placeholder="Hello!"></div>
+        <!-- Honeypot: hidden from humans; bots that fill it are silently discarded -->
+        <input class="mail-honey" id="mail-honey" type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true">
         <textarea id="mail-message" placeholder="Write your message…"></textarea>
         <div class="mail-actions">
           <span id="mail-error"></span>

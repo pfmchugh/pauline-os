@@ -289,6 +289,27 @@ test.describe('mail', () => {
     await expect(page.locator('.mail-send')).toHaveText('Send ▸');
   });
 
+  test('the honeypot field is invisible to visitors', async ({ page }) => {
+    await openMail(page);
+    const honey = page.locator('#mail-honey');
+    await expect(honey).toHaveCount(1);
+    await expect(honey).not.toBeInViewport();
+    // keyboard users never land on it either
+    await expect(honey).toHaveAttribute('tabindex', '-1');
+  });
+
+  test('a submission with the honeypot filled is silently discarded', async ({ page }) => {
+    const sent = await mockMailEndpoint(page);
+    await openMail(page);
+    await fillMail(page);
+    await page.locator('#mail-honey').evaluate((el) => { el.value = 'spam-bot'; });
+    await page.locator('.mail-send').click();
+    // the bot sees the normal success screen…
+    await expect(page.locator('#mail-sent')).toHaveClass(/show/);
+    // …but nothing was actually sent
+    expect(sent).toHaveLength(0);
+  });
+
   test('"Write another" resets the form', async ({ page }) => {
     await mockMailEndpoint(page);
     await openMail(page);
