@@ -211,6 +211,31 @@ test.describe('mail', () => {
     await expect(page.locator('#win-mail')).toHaveClass(/open/);
   };
 
+  /**
+   * Stub the FormSubmit.co AJAX endpoint so tests never hit the real
+   * service. Returns the list of intercepted request payloads.
+   */
+  const mockMailEndpoint = async (page, { status = 200 } = {}) => {
+    const sent = [];
+    await page.route('**/formsubmit.co/ajax/**', async (route) => {
+      sent.push(route.request().postDataJSON());
+      await route.fulfill({
+        status,
+        contentType: 'application/json',
+        body: JSON.stringify(status === 200
+          ? { success: 'true', message: 'The form was submitted successfully.' }
+          : { success: 'false', message: 'error' }),
+      });
+    });
+    return sent;
+  };
+
+  const fillMail = async (page, from = 'someone@example.com') => {
+    await page.fill('#mail-from', from);
+    await page.fill('#mail-subject', 'Hello');
+    await page.fill('#mail-message', 'Hi there');
+  };
+
   test('submitting with empty fields shows an error', async ({ page }) => {
     await openMail(page);
     await page.locator('.mail-send').click();
@@ -218,38 +243,48 @@ test.describe('mail', () => {
     await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
   });
 
-  test('a malformed sender address is rejected', async ({ page }) => {
+  test('a malformed sender address is rejected without a network call', async ({ page }) => {
+    const sent = await mockMailEndpoint(page);
     await openMail(page);
-    await page.fill('#mail-from', 'not-an-email');
-    await page.fill('#mail-subject', 'Hello');
-    await page.fill('#mail-message', 'Hi there');
+    await fillMail(page, 'not-an-email');
     await page.locator('.mail-send').click();
     await expect(page.locator('#mail-error')).toHaveText("That email doesn't look right.");
     await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+    expect(sent).toHaveLength(0);
   });
 
-  test('a valid submission shows the sent screen', async ({ page }) => {
-    // NOTE: today the mail form is client-side only — no message is actually
-    // transmitted anywhere. This test pins that behavior; if the form is ever
-    // wired to a real backend, update the request assertion below.
-    const requests = [];
-    page.on('request', (r) => requests.push(r.url()));
+  test('a valid submission posts to FormSubmit and shows the sent screen', async ({ page }) => {
+    const sent = await mockMailEndpoint(page);
     await openMail(page);
-    await page.fill('#mail-from', 'someone@example.com');
-    await page.fill('#mail-subject', 'Hello');
-    await page.fill('#mail-message', 'Hi there');
-    requests.length = 0;
+    await fillMail(page);
     await page.locator('.mail-send').click();
     await expect(page.locator('#mail-sent')).toHaveClass(/show/);
     await expect(page.locator('#mail-form')).toBeHidden();
-    expect(requests).toEqual([]);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({
+      _replyto: 'someone@example.com',
+      _subject: '[pauline-os] Hello',
+      message: 'Hi there',
+    });
+  });
+
+  test('a delivery failure shows an error and keeps the form', async ({ page }) => {
+    await mockMailEndpoint(page, { status: 500 });
+    await openMail(page);
+    await fillMail(page);
+    await page.locator('.mail-send').click();
+    await expect(page.locator('#mail-error')).toHaveText(/Couldn't send/);
+    await expect(page.locator('#mail-form')).toBeVisible();
+    await expect(page.locator('#mail-sent')).not.toHaveClass(/show/);
+    // the send button recovers so the visitor can retry
+    await expect(page.locator('.mail-send')).toBeEnabled();
+    await expect(page.locator('.mail-send')).toHaveText('Send ▸');
   });
 
   test('"Write another" resets the form', async ({ page }) => {
+    await mockMailEndpoint(page);
     await openMail(page);
-    await page.fill('#mail-from', 'someone@example.com');
-    await page.fill('#mail-subject', 'Hello');
-    await page.fill('#mail-message', 'Hi there');
+    await fillMail(page);
     await page.locator('.mail-send').click();
     await page.locator('#mail-reset').click();
     await expect(page.locator('#mail-form')).toBeVisible();
