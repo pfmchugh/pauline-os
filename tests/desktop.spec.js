@@ -149,6 +149,26 @@ test.describe('menu bar', () => {
     await expect(page.locator('#boot')).toHaveClass(/done/, { timeout: 4000 });
   });
 
+  test('Pauline OS > Restart clears state back to defaults', async ({ page }) => {
+    // Mess up the desktop: empty the trash and edit the hello.txt notepad.
+    await openMenu(page, 'special');
+    await clickCmd(page, 'special', 'empty-trash');
+    await expect(page.locator('.trash-item')).toHaveCount(0);
+    const hello = page.locator('#hello-text');
+    await hello.fill('scribbles that should not survive a restart');
+
+    // Restart, then wait for the boot screen to finish.
+    await openMenu(page, 'special');
+    await clickCmd(page, 'special', 'restart');
+    await expect(page.locator('#boot')).toHaveClass(/done/, { timeout: 4000 });
+
+    // Trash is repopulated and the notepad is back to its default text.
+    await page.locator('#trash-icon').click();
+    await expect(page.locator('.trash-item')).toHaveCount(3);
+    await hello.focus();
+    await expect(hello).toHaveValue(/Say hi — I read everything\./);
+  });
+
   for (const width of [375, 320]) {
     test(`menu bar fits a ${width}px viewport with the clock fully visible`, async ({ page }) => {
       await page.setViewportSize({ width, height: 667 });

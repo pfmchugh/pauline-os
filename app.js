@@ -51,21 +51,29 @@
     z: { resume: 11, contact: 12 },
   };
 
+  const DEFAULT_TRASH = [
+    { name: 'impostor_syndrome.zip', note: '4.2 GB — safe to delete' },
+    { name: 'flaky_test_v47.js', note: 'passes on the 48th try' },
+    { name: 'selenium_ide_scripts/', note: 'it was a different time' },
+  ];
+
+  function freshState() {
+    return {
+      open: { ...INITIAL.open },
+      pos: Object.fromEntries(Object.entries(INITIAL.pos).map(([k, v]) => [k, { ...v }])),
+      size: Object.fromEntries(Object.entries(SIZES).map(([k, [w, h]]) => [k, { w, h }])),
+      z: { ...INITIAL.z },
+      shaded: {},
+      maxed: {},
+      topZ: 12,
+      trashItems: DEFAULT_TRASH.map((it) => ({ ...it })),
+      clockMode: 0,
+      scanlinesOn: CONFIG.scanlines,
+    };
+  }
+
   const state = {
-    open: { ...INITIAL.open },
-    pos: Object.fromEntries(Object.entries(INITIAL.pos).map(([k, v]) => [k, { ...v }])),
-    size: Object.fromEntries(Object.entries(SIZES).map(([k, [w, h]]) => [k, { w, h }])),
-    z: { ...INITIAL.z },
-    shaded: {},
-    maxed: {},
-    topZ: 12,
-    trashItems: [
-      { name: 'impostor_syndrome.zip', note: '4.2 GB — safe to delete' },
-      { name: 'flaky_test_v47.js', note: 'passes on the 48th try' },
-      { name: 'selenium_ide_scripts/', note: 'it was a different time' },
-    ],
-    clockMode: 0,
-    scanlinesOn: CONFIG.scanlines,
+    ...freshState(),
     cat: { x: -60, dir: 1, mode: 'hidden', dur: 0 },
   };
 
@@ -345,7 +353,25 @@
   function reboot() {
     clearTimeout(bootTimer);
     bootEl.classList.remove('done');
+    resetDesktop();
     bootTimer = setTimeout(endBoot, 2400);
+  }
+
+  // Wipe every mutable bit of desktop state back to its default so a restart
+  // is a clean boot: windows, trash, clock and scanlines reset, the notepads
+  // return to their original text, and the mail form goes pristine.
+  function resetDesktop() {
+    Object.assign(state, freshState());
+    setScanlines(CONFIG.scanlines);
+    renderAll();
+    renderTrash();
+    renderClock();
+    document.getElementById('readme-text').value = README_TEXT;
+    startTyping();
+    mailForm.reset();
+    mailError.textContent = '';
+    mailSent.classList.remove('show');
+    mailForm.style.display = '';
   }
   bootEl.addEventListener('click', endBoot);
   bootTimer = setTimeout(endBoot, 2400);
