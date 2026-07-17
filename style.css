@@ -929,7 +929,7 @@ input, textarea { font-family: Verdana, Geneva, sans-serif; }
   width: 100px;
   height: 108px;
   background: url('assets/corgi-sprites.png') no-repeat 0 0;
-  background-size: 200px 540px;
+  background-size: 200px 1080px;
   image-rendering: pixelated;
   filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, .3));
   animation: catframes .7s steps(2) infinite;
@@ -938,6 +938,11 @@ input, textarea { font-family: Verdana, Geneva, sans-serif; }
 #cat.dash .sprite { background-position-y: -216px; animation-duration: .2s; }
 #cat.lie .sprite { background-position-y: -324px; animation-duration: .9s; }
 #cat.sleep .sprite { background-position-y: -432px; animation-duration: 1.4s; }
+#cat.sit2 .sprite { background-position-y: -540px; }
+#cat.loaf .sprite { background-position-y: -648px; animation-duration: .9s; }
+#cat.doze .sprite { background-position-y: -756px; animation-duration: 1.4s; }
+#cat.play .sprite { background-position-y: -864px; animation-duration: .45s; }
+#cat.walk2 .sprite { background-position-y: -972px; animation-duration: .35s; }
 
 /* ═══ Trash drag ghost + puff ═══ */
 
