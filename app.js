@@ -74,7 +74,7 @@
 
   const state = {
     ...freshState(),
-    cat: { x: -60, dir: 1, mode: 'hidden', dur: 0 },
+    cat: { x: -110, dir: 1, mode: 'hidden', dur: 0 },
   };
 
   const winEls = {};
@@ -578,12 +578,13 @@
   // ═══ Pixel corgi ═══
 
   const catEl = document.getElementById('cat');
+  const CAT_MODES = ['sit', 'walk', 'dash', 'lie', 'sleep'];
   let catTimer;
 
   function applyCat() {
     const cat = state.cat;
     catEl.classList.toggle('on', cat.mode !== 'hidden');
-    catEl.classList.toggle('bob', cat.mode === 'walk' || cat.mode === 'dash');
+    for (const m of CAT_MODES) catEl.classList.toggle(m, cat.mode === m);
     catEl.style.transition = 'left ' + cat.dur + 's linear';
     catEl.style.left = cat.x + 'px';
     catEl.style.transform = 'scaleX(' + cat.dir + ')';
@@ -594,9 +595,11 @@
     if (cat.mode === 'hidden') {
       const vw = window.innerWidth;
       const fromLeft = Math.random() < 0.5;
-      state.cat = { x: fromLeft ? -60 : vw + 20, dir: fromLeft ? 1 : -1, mode: 'sit', dur: 0 };
+      state.cat = { x: fromLeft ? -110 : vw + 10, dir: fromLeft ? 1 : -1, mode: 'sit', dur: 0 };
       applyCat();
       catTimer = setTimeout(catWalk, 100);
+    } else if (cat.mode === 'walk' && Math.random() < 0.25) {
+      catNap();
     } else if (cat.mode === 'walk' && Math.random() < 0.5) {
       state.cat = { ...cat, mode: 'sit', dur: 0 };
       applyCat();
@@ -604,6 +607,20 @@
     } else {
       catWalk();
     }
+  }
+
+  function catNap() {
+    state.cat = { ...state.cat, mode: 'lie', dur: 0 };
+    applyCat();
+    catTimer = setTimeout(() => {
+      state.cat = { ...state.cat, mode: 'sleep', dur: 0 };
+      applyCat();
+      catTimer = setTimeout(() => {
+        state.cat = { ...state.cat, mode: 'sit', dur: 0 };
+        applyCat();
+        catTimer = setTimeout(catWalk, 1500);
+      }, 8000 + Math.random() * 8000);
+    }, 2500);
   }
 
   function catWalk() {
@@ -620,12 +637,12 @@
     clearTimeout(catTimer);
     const vw = window.innerWidth;
     const cat = state.cat;
-    const target = cat.dir > 0 ? vw + 80 : -80;
+    const target = cat.dir > 0 ? vw + 120 : -120;
     const dur = Math.max(0.4, Math.abs(target - cat.x) / 300);
     state.cat = { x: target, dir: cat.dir, mode: 'dash', dur };
     applyCat();
     catTimer = setTimeout(() => {
-      state.cat = { x: -60, dir: 1, mode: 'hidden', dur: 0 };
+      state.cat = { x: -110, dir: 1, mode: 'hidden', dur: 0 };
       applyCat();
       catTimer = setTimeout(catStep, 15000 + Math.random() * 15000);
     }, dur * 1000 + 100);
