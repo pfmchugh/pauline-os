@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mahjong Trainer — Pauline OS</title>
+<meta name="description" content="Learn mahjong from absolute zero: interactive lessons, then a live game against bots with a coach explaining the best move every turn.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- media=print + onload swap keeps the webfont from blocking script execution -->
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="mahjong.css">
+</head>
+<body>
+
+<div id="mj-app">
+
+  <header id="mj-header">
+    <a class="crumb pixel" id="crumb-home" href="../../">◂ Pauline OS</a>
+    <div class="mj-title pixel">🀄 Mahjong Trainer</div>
+    <nav class="mj-tabs" role="tablist">
+      <button id="tab-learn" class="mj-tab pixel active" role="tab">Learn</button>
+      <button id="tab-play" class="mj-tab pixel" role="tab">Play</button>
+    </nav>
+  </header>
+
+  <!-- ═══ Learn mode ═══ -->
+  <main id="learn" class="mj-view">
+    <div id="lesson-card">
+      <div id="lesson-kicker" class="pixel"></div>
+      <h2 id="lesson-title"></h2>
+      <div id="lesson-body"></div>
+    </div>
+    <div id="lesson-nav">
+      <button id="lesson-prev" class="pixel-btn">◂ Back</button>
+      <div id="lesson-dots" aria-label="Lesson progress"></div>
+      <button id="lesson-next" class="pixel-btn">Next ▸</button>
+    </div>
+  </main>
+
+  <!-- ═══ Play mode ═══ -->
+  <main id="play" class="mj-view" hidden>
+    <div id="play-bar">
+      <button id="new-game" class="pixel-btn">↻ New game</button>
+      <label id="coach-wrap" title="Turn move recommendations on or off">
+        <input type="checkbox" id="coach-toggle" checked> <span class="pixel">Coach</span>
+      </label>
+      <div class="spacer"></div>
+      <div id="wall-count" class="pixel"></div>
+    </div>
+
+    <div id="table">
+      <div id="opponents"></div>
+      <div id="your-river-row">
+        <span class="river-label pixel">You (East)</span>
+        <div class="river" id="river-0"></div>
+      </div>
+    </div>
+
+    <div id="coach">
+      <div class="coach-head pixel">◆ COACH</div>
+      <div id="coach-body"></div>
+    </div>
+
+    <div id="call-bar" hidden>
+      <div id="call-text"></div>
+      <div id="call-buttons"></div>
+    </div>
+
+    <div id="player-area">
+      <div id="player-melds"></div>
+      <div id="hand" aria-label="Your hand"></div>
+      <div id="hand-actions"></div>
+    </div>
+  </main>
+
+  <!-- win / draw dialog -->
+  <div id="mj-dialog" hidden>
+    <div class="mj-dialog-box">
+      <div id="mj-dialog-title" class="pixel"></div>
+      <div id="mj-dialog-body"></div>
+      <button id="mj-dialog-btn" class="pixel-btn">Play again ▸</button>
+    </div>
+  </div>
+
+  <div id="toast" class="pixel" hidden></div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

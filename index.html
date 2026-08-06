@@ -79,6 +79,14 @@
       <div class="icon-label">Projects</div>
     </button>
 
+    <button class="icon" data-open="games">
+      <div class="icon-folder games">
+        <div class="tab"></div>
+        <div class="body"><div class="shine"></div></div>
+      </div>
+      <div class="icon-label">Games</div>
+    </button>
+
     <button class="icon" data-open="contact">
       <div class="icon-pdf">
         <div class="line"></div>
@@ -249,6 +257,46 @@
           </div>
           <div class="folder-icon-label">README.md</div>
         </button>
+      </div>
+    </div>
+    <div class="win-resize" data-resize aria-hidden="true"></div>
+  </div>
+
+  <!-- ═══ Games folder window ═══ -->
+  <div class="win" id="win-games" data-win="games">
+    <div class="win-titlebar" data-drag>
+      <button class="win-btn" data-action="close" aria-label="Close">×</button>
+      <div class="win-title"><span>Games</span></div>
+      <button class="win-btn" data-action="shade" aria-label="Collapse"><span class="dash"></span></button>
+      <button class="win-btn" data-action="zoom" aria-label="Zoom"><span class="box"></span></button>
+    </div>
+    <div class="win-body">
+      <div class="folder-status">1 item &nbsp;·&nbsp; zero microtransactions</div>
+      <div class="folder-contents">
+        <button class="folder-icon" id="open-mahjong">
+          <div class="icon-mahjong"><span class="mj-char">中</span></div>
+          <div class="folder-icon-label">Mahjong Trainer</div>
+        </button>
+      </div>
+    </div>
+    <div class="win-resize" data-resize aria-hidden="true"></div>
+  </div>
+
+  <!-- ═══ Mahjong Trainer window ═══ -->
+  <div class="win" id="win-mahjong" data-win="mahjong">
+    <div class="win-titlebar" data-drag>
+      <button class="win-btn" data-action="close" aria-label="Close">×</button>
+      <div class="win-title"><span>Mahjong Trainer</span></div>
+      <button class="win-btn" data-action="shade" aria-label="Collapse"><span class="dash"></span></button>
+      <button class="win-btn" data-action="zoom" aria-label="Zoom"><span class="box"></span></button>
+    </div>
+    <div class="win-body">
+      <div class="app-frame">
+        <div class="app-bar">
+          <span>Learn mahjong from zero — lessons, then a live game with a coach.</span>
+          <a class="pixel-btn" href="games/mahjong/" target="_blank" rel="noopener">Full screen ↗</a>
+        </div>
+        <iframe id="mahjong-iframe" title="Mahjong Trainer" data-src="games/mahjong/index.html?embed=1"></iframe>
       </div>
     </div>
     <div class="win-resize" data-resize aria-hidden="true"></div>

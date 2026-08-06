@@ -1124,3 +1124,55 @@ input, textarea { font-family: Verdana, Geneva, sans-serif; }
   display: none;
 }
 #scanlines.on { display: block; }
+
+/* ═══ Games folder & Mahjong Trainer ═══ */
+
+.icon-folder.games .tab { background: #7ee2a8; }
+.icon-folder.games .body { background: #7ee2a8; }
+.icon-folder.games .body .shine { background: #b2f0cd; }
+
+.icon-mahjong {
+  width: 34px; height: 44px;
+  background: #fdfaf1;
+  border: 2px solid #181818;
+  border-radius: 4px;
+  box-shadow: inset -3px -3px 0 #cfc7ae, 2px 2px 0 rgba(0, 0, 0, .35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-mahjong .mj-char {
+  font-size: 20px;
+  font-weight: 700;
+  color: #b03434;
+  line-height: 1;
+}
+
+.app-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-top: 2px solid var(--bevel-dark);
+}
+.app-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--bevel-dark);
+  background: var(--win-bg);
+  flex-shrink: 0;
+}
+.app-bar span {
+  font-family: 'Silkscreen', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-frame iframe { flex: 1; min-height: 0; border: none; width: 100%; }
