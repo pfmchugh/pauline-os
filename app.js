@@ -21,7 +21,7 @@
 
   const HELLO_TEXT = "═══ HELLO ═══\n\nHi, I'm Pauline. Welcome to my desktop.\nPoke around — my resume is on the desktop,\nand you can drop me a line with Mail.\n\nemail ...... mchughpf@gmail.com\nlocation ... Houston, TX\nlinkedin ... linkedin.com/in/pfmchugh\n\nSay hi — I read everything.";
 
-  const README_TEXT = "═══ README ═══\n\nWhat's cooking:\n\n- pauline-os v2 (you are here)\n- NEW: Mahjong Trainer — learn\n  mahjong from zero, in Games\n- writing up QA war stories\n- more apps for this desktop\n\nCheck back soon — this folder\nwon't stay empty for long.";
+  const README_TEXT = "═══ README ═══\n\nWhat's cooking:\n\n- pauline-os v2 (you are here)\n- NEW: Mahjong Trainer — learn\n  American Mah Jongg, in Games\n- writing up QA war stories\n- more apps for this desktop\n\nCheck back soon — this folder\nwon't stay empty for long.";
 
   const SIZES = {
     resume: [660, 540],

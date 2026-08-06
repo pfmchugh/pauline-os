@@ -1,27 +1,44 @@
 /*
- * Mahjong engine — pure game logic, no DOM.
+ * American Mah Jongg engine — pure game logic, no DOM.
  * Exposed as window.Mahjong so the UI (game.js) and Playwright tests share it.
  *
- * Tile encoding: a tile is an integer 0–33.
- *   0–8   characters (wan)  1–9   "m"
- *   9–17  dots (circles)    1–9   "p"
- *   18–26 bamboo (sticks)   1–9   "s"
- *   27–33 honors: East, South, West, North, White, Green, Red
- * The wall holds four copies of each: 136 tiles.
+ * Tile encoding: a tile is an integer 0–35.
+ *   0–8   craks (characters) 1–9   "m"
+ *   9–17  dots (circles)     1–9   "p"
+ *   18–26 bams (bamboo)      1–9   "s"
+ *   27–30 winds: East, South, West, North
+ *   31    soap (white dragon — also the zero tile)
+ *   32    green dragon   33  red dragon
+ *   34    flower         35  joker
+ * Copies: 4 of everything except flowers (8) and jokers (8) → 152 tiles.
+ *
+ * American hands are fixed patterns from a card. This engine ships an
+ * ORIGINAL practice card (not the copyrighted NMJL card) covering the
+ * classic categories. Every hand is a list of groups; jokers may stand in
+ * for any tile in a group of three or more, never in pairs or singles.
  */
 (function (global) {
   'use strict';
 
-  const HONOR_NAMES = ['East', 'South', 'West', 'North', 'White Dragon', 'Green Dragon', 'Red Dragon'];
-  const SUIT_NAMES = { m: 'Characters', p: 'Dots', s: 'Bamboo' };
+  const CRAK = 0, DOT = 9, BAM = 18;
+  const EAST = 27, SOUTH = 28, WEST = 29, NORTH = 30;
+  const SOAP = 31, GREEN = 32, RED = 33, FLOWER = 34, JOKER = 35;
+  const N_TYPES = 36;
+
+  const HONOR_NAMES = ['East', 'South', 'West', 'North', 'Soap (White Dragon)', 'Green Dragon', 'Red Dragon', 'Flower', 'Joker'];
+  const SUIT_NAMES = { m: 'Craks', p: 'Dots', s: 'Bams' };
+  // "matching" dragon for each suit base: craks↔red, dots↔soap, bams↔green
+  const MATCH_DRAGON = { 0: RED, 9: SOAP, 18: GREEN };
 
   const suitOf = (t) => (t < 9 ? 'm' : t < 18 ? 'p' : t < 27 ? 's' : 'z');
-  const numOf = (t) => (t < 27 ? (t % 9) + 1 : t - 26);
-  const isHonor = (t) => t >= 27;
-  const isTerminal = (t) => !isHonor(t) && (numOf(t) === 1 || numOf(t) === 9);
+  const numOf = (t) => (t < 27 ? (t % 9) + 1 : 0);
+  const isJoker = (t) => t === JOKER;
+  const isFlower = (t) => t === FLOWER;
+
+  function copiesOf(t) { return t >= FLOWER ? 8 : 4; }
 
   function tileName(t) {
-    if (isHonor(t)) return HONOR_NAMES[t - 27];
+    if (t >= EAST) return HONOR_NAMES[t - EAST];
     return numOf(t) + ' ' + SUIT_NAMES[suitOf(t)];
   }
 
@@ -38,7 +55,7 @@
 
   function buildWall(rand) {
     const wall = [];
-    for (let t = 0; t < 34; t++) for (let i = 0; i < 4; i++) wall.push(t);
+    for (let t = 0; t < N_TYPES; t++) for (let i = 0; i < copiesOf(t); i++) wall.push(t);
     for (let i = wall.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1));
       [wall[i], wall[j]] = [wall[j], wall[i]];
@@ -47,173 +64,319 @@
   }
 
   function counts(tiles) {
-    const c = new Array(34).fill(0);
+    const c = new Array(N_TYPES).fill(0);
     for (const t of tiles) c[t]++;
     return c;
   }
 
-  /*
-   * Standard-hand shanten: how many tile swaps away from a complete hand
-   * (four sets + a pair). -1 means the hand is complete, 0 means ready
-   * (tenpai). openMeldCount is the number of melds already claimed —
-   * they count as finished sets.
-   *
-   * The hand is split into its four independent groups (three suits +
-   * honors). Each group's achievable {sets, partials, pair} decompositions
-   * are enumerated once and memoized globally — the coach and bots evaluate
-   * hundreds of near-identical hands per turn, so the cache hit rate is high.
-   */
-  const GROUP_CACHE = new Map();
+  // ═══ The practice card ═══
+  // Groups are {tile, size}; jokers are legal in any group with size >= 3.
 
-  function groupOptions(cells, allowRuns) {
-    const key = (allowRuns ? 'r' : 'h') + cells.join('');
-    const hit = GROUP_CACHE.get(key);
-    if (hit) return hit;
-    const c = cells.slice();
-    const seen = new Set();
-    const found = [];
+  const SUITS = [CRAK, DOT, BAM];
+  const DRAGONS = [SOAP, GREEN, RED];
+  const g = (tile, size) => ({ tile, size });
 
-    function emit(s, p, pair) {
-      const k = s * 100 + p * 10 + (pair ? 1 : 0);
-      if (!seen.has(k)) { seen.add(k); found.push([s, p, pair ? 1 : 0]); }
-    }
-
-    function walk(i, s, p, pair) {
-      while (i < c.length && c[i] === 0) i++;
-      if (i >= c.length) { emit(s, p, pair); return; }
-      if (c[i] >= 3) { c[i] -= 3; walk(i, s + 1, p, pair); c[i] += 3; }
-      if (allowRuns && i + 2 < c.length && c[i + 1] > 0 && c[i + 2] > 0) {
-        c[i]--; c[i + 1]--; c[i + 2]--;
-        walk(i, s + 1, p, pair);
-        c[i]++; c[i + 1]++; c[i + 2]++;
-      }
-      if (c[i] >= 2) {
-        if (!pair) { c[i] -= 2; walk(i, s, p, true); c[i] += 2; }
-        c[i] -= 2; walk(i, s, p + 1, pair); c[i] += 2;
-      }
-      if (allowRuns && i + 1 < c.length && c[i + 1] > 0) {
-        c[i]--; c[i + 1]--;
-        walk(i, s, p + 1, pair);
-        c[i]++; c[i + 1]++;
-      }
-      if (allowRuns && i + 2 < c.length && c[i + 2] > 0) {
-        c[i]--; c[i + 2]--;
-        walk(i, s, p + 1, pair);
-        c[i]++; c[i + 2]++;
-      }
-      // leave one copy aside as a floater
-      c[i]--;
-      walk(c[i] > 0 ? i : i + 1, s, p, pair);
-      c[i]++;
-    }
-
-    walk(0, 0, 0, false);
-    // Pareto-prune: more sets/partials/pair is never worse, so drop dominated rows
-    const options = found.filter(([s, p, pr]) =>
-      !found.some(([s2, p2, pr2]) =>
-        (s2 !== s || p2 !== p || pr2 !== pr) && s2 >= s && p2 >= p && pr2 >= pr));
-    GROUP_CACHE.set(key, options);
-    return options;
-  }
-
-  function shanten(tileList, openMeldCount) {
-    const open = openMeldCount || 0;
-    const c = counts(tileList);
-    const groups = [
-      groupOptions(c.slice(0, 9), true),
-      groupOptions(c.slice(9, 18), true),
-      groupOptions(c.slice(18, 27), true),
-      groupOptions(c.slice(27, 34), false),
-    ];
-    const maxBlocks = 4 - open;
-    let best = 8;
-    for (const a of groups[0]) for (const b of groups[1]) for (const g of groups[2]) for (const d of groups[3]) {
-      const pair = a[2] + b[2] + g[2] + d[2];
-      if (pair > 1) continue;
-      const s = Math.min(a[0] + b[0] + g[0] + d[0], maxBlocks);
-      const p = Math.min(a[1] + b[1] + g[1] + d[1], maxBlocks - s);
-      const sh = 8 - 2 * (s + open) - p - (pair ? 1 : 0);
-      if (sh < best) best = sh;
-    }
-    return best;
-  }
-
-  const isWinningHand = (tiles, openMeldCount) => shanten(tiles, openMeldCount) === -1;
-
-  /*
-   * Ukeire: with a 13-mod-3 hand, which tile types would move it closer to
-   * winning, and how many copies of them are still unseen?
-   * unseen: optional 34-array of remaining copies; defaults to 4 minus hand.
-   */
-  function ukeire(tiles, openMeldCount, unseen) {
-    const base = shanten(tiles, openMeldCount);
-    const own = counts(tiles);
+  function permutations2() {
     const out = [];
-    let total = 0;
-    for (let t = 0; t < 34; t++) {
-      const avail = unseen ? unseen[t] : 4 - own[t];
-      if (avail <= 0) continue;
-      if (shanten(tiles.concat(t), openMeldCount) < base) {
-        out.push({ tile: t, count: avail });
-        total += avail;
-      }
-    }
-    return { shanten: base, total, tiles: out };
+    for (const a of SUITS) for (const b of SUITS) if (a !== b) out.push([a, b]);
+    return out;
   }
-
-  /*
-   * Rank every distinct discard from a 14-mod-3 hand: lowest resulting
-   * shanten first, most improving tiles (ukeire) as the tiebreak.
-   */
-  function evaluateDiscards(tiles, openMeldCount, unseen) {
-    const seen = new Set();
-    const rows = [];
-    tiles.forEach((t, idx) => {
-      if (seen.has(t)) return;
-      seen.add(t);
-      const rest = tiles.slice();
-      rest.splice(idx, 1);
-      const u = ukeire(rest, openMeldCount, unseen);
-      rows.push({ tile: t, shanten: u.shanten, ukeire: u.total, tiles: u.tiles });
-    });
-    rows.sort((a, b) => a.shanten - b.shanten || b.ukeire - a.ukeire);
-    return rows;
-  }
-
-  // Which pairs of hand tiles could form a run with a claimed discard?
-  function chowOptions(handTiles, t) {
-    if (isHonor(t)) return [];
-    const own = counts(handTiles);
-    const s = Math.floor(t / 9) * 9;
-    const opts = [];
-    const has = (x) => x >= s && x < s + 9 && own[x] > 0;
-    if (has(t - 2) && has(t - 1)) opts.push([t - 2, t - 1]);
-    if (has(t - 1) && has(t + 1)) opts.push([t - 1, t + 1]);
-    if (has(t + 1) && has(t + 2)) opts.push([t + 1, t + 2]);
-    return opts;
-  }
-
-  /*
-   * Light-touch pattern spotting for the win screen — a friendly nod toward
-   * scoring without teaching a full scoring table.
-   */
-  function winPatterns(allTiles, method, seatWind) {
-    const c = counts(allTiles);
-    const suits = new Set(allTiles.filter((t) => !isHonor(t)).map(suitOf));
-    const honors = allTiles.some(isHonor);
+  function permutations3() {
     const out = [];
-    if (suits.size === 1 && !honors) out.push('Full Flush — every tile from one suit');
-    else if (suits.size === 1 && honors) out.push('Half Flush — one suit plus honors');
-    if (allTiles.every((t) => !isHonor(t) && !isTerminal(t))) out.push('All Simples — no 1s, 9s, or honors');
-    for (let d = 31; d <= 33; d++) if (c[d] >= 3) out.push('Dragon triplet — ' + HONOR_NAMES[d - 27]);
-    if (seatWind !== undefined && c[27 + seatWind] >= 3) out.push('Seat wind triplet — ' + HONOR_NAMES[seatWind]);
-    if (method === 'tsumo') out.push('Self-draw win (tsumo)');
+    for (const a of SUITS) for (const b of SUITS) for (const c of SUITS)
+      if (a !== b && a !== c && b !== c) out.push([a, b, c]);
     return out;
   }
 
+  const CARD = [
+    {
+      id: 'like-numbers', cat: 'Any Like Numbers', points: 30,
+      notation: 'FF 1111 1111 1111', note: 'Any number 1–9; a kong of it in every suit.',
+      variants() {
+        const v = [];
+        for (let n = 0; n < 9; n++)
+          v.push([g(FLOWER, 2), g(CRAK + n, 4), g(DOT + n, 4), g(BAM + n, 4)]);
+        return v;
+      },
+    },
+    {
+      id: 'evens-run', cat: '2468', points: 25,
+      notation: '222 444 6666 8888', note: '2s and 4s in one suit, 6s and 8s in a second suit.',
+      variants() {
+        const v = [];
+        for (const [a, b] of permutations2())
+          v.push([g(a + 1, 3), g(a + 3, 3), g(b + 5, 4), g(b + 7, 4)]);
+        return v;
+      },
+    },
+    {
+      id: 'evens-dragons', cat: '2468', points: 30,
+      notation: '22 44 666 888 DDDD', note: 'One suit with a kong of its matching dragon (craks·red, bams·green, dots·soap).',
+      variants() {
+        return SUITS.map((a) => [g(a + 1, 2), g(a + 3, 2), g(a + 5, 3), g(a + 7, 3), g(MATCH_DRAGON[a], 4)]);
+      },
+    },
+    {
+      id: 'consec-kongs', cat: 'Consecutive Run', points: 25,
+      notation: '111 2222 333 4444', note: 'Four consecutive numbers in one suit, starting anywhere 1–6.',
+      variants() {
+        const v = [];
+        for (const a of SUITS) for (let n = 0; n <= 5; n++)
+          v.push([g(a + n, 3), g(a + n + 1, 4), g(a + n + 2, 3), g(a + n + 3, 4)]);
+        return v;
+      },
+    },
+    {
+      id: 'consec-climb', cat: 'Consecutive Run', points: 30,
+      notation: '11 22 333 444 5555', note: 'Five consecutive numbers in one suit, starting anywhere 1–5.',
+      variants() {
+        const v = [];
+        for (const a of SUITS) for (let n = 0; n <= 4; n++)
+          v.push([g(a + n, 2), g(a + n + 1, 2), g(a + n + 2, 3), g(a + n + 3, 3), g(a + n + 4, 4)]);
+        return v;
+      },
+    },
+    {
+      id: 'odds-135', cat: '13579', points: 25,
+      notation: '11 333 5555 777 99', note: 'All five odd numbers in one suit.',
+      variants() {
+        return SUITS.map((a) => [g(a + 0, 2), g(a + 2, 3), g(a + 4, 4), g(a + 6, 3), g(a + 8, 2)]);
+      },
+    },
+    {
+      id: 'odds-heavy-nine', cat: '13579', points: 30,
+      notation: '111 33 555 77 9999', note: 'All five odd numbers in one suit, kong of 9s.',
+      variants() {
+        return SUITS.map((a) => [g(a + 0, 3), g(a + 2, 2), g(a + 4, 3), g(a + 6, 2), g(a + 8, 4)]);
+      },
+    },
+    {
+      id: 'winds-dragons', cat: 'Winds & Dragons', points: 30,
+      notation: 'EEE SSS WWW NNN DD', note: 'Pungs of all four winds, pair of any dragon.',
+      variants() {
+        return DRAGONS.map((d) => [g(EAST, 3), g(SOUTH, 3), g(WEST, 3), g(NORTH, 3), g(d, 2)]);
+      },
+    },
+    {
+      id: 'three-six-nine', cat: '369', points: 30,
+      notation: '3333 6666 9999 DD', note: 'Kongs of 3, 6, 9 in three different suits, pair of any dragon.',
+      variants() {
+        const v = [];
+        for (const [a, b, c] of permutations3()) for (const d of DRAGONS)
+          v.push([g(a + 2, 4), g(b + 5, 4), g(c + 8, 4), g(d, 2)]);
+        return v;
+      },
+    },
+    {
+      id: 'quints', cat: 'Quints', points: 40,
+      notation: 'FFFF 11111 11111', note: 'Quints of the same number in two suits — impossible without jokers.',
+      variants() {
+        const v = [];
+        for (let n = 0; n < 9; n++) for (const [a, b] of permutations2())
+          v.push([g(FLOWER, 4), g(a + n, 5), g(b + n, 5)]);
+        return v;
+      },
+    },
+    {
+      id: 'seven-pairs', cat: 'Singles & Pairs', points: 50, concealed: true,
+      notation: '11 22 33 44 55 66 77', note: 'Seven consecutive pairs in one suit, starting 1–3. Concealed — no exposures, and pairs never take jokers.',
+      variants() {
+        const v = [];
+        for (const a of SUITS) for (let n = 0; n <= 2; n++)
+          v.push([g(a + n, 2), g(a + n + 1, 2), g(a + n + 2, 2), g(a + n + 3, 2), g(a + n + 4, 2), g(a + n + 5, 2), g(a + n + 6, 2)]);
+        return v;
+      },
+    },
+  ];
+
+  // Pre-expand every hand into concrete variants once.
+  const ALL_VARIANTS = [];
+  CARD.forEach((hand, hi) => {
+    for (const groups of hand.variants()) {
+      ALL_VARIANTS.push({ hand: hi, groups });
+    }
+  });
+
+  /*
+   * Distance of a hand (counts + exposures) from one concrete variant:
+   * the number of tiles still needed to complete it. Infinity when the
+   * variant is incompatible with the exposures already on the table.
+   * Jokers in hand fill shortfalls in groups of 3+, never pairs/singles.
+   */
+  function variantNeed(c, exposures, variant) {
+    const hand = CARD[variant.hand];
+    if (exposures.length && hand.concealed) return Infinity;
+    // each exposure must claim a distinct matching group
+    const taken = new Array(variant.groups.length).fill(false);
+    for (const ex of exposures) {
+      let ok = false;
+      for (let i = 0; i < variant.groups.length; i++) {
+        const grp = variant.groups[i];
+        if (!taken[i] && grp.tile === ex.tile && grp.size === ex.size) { taken[i] = true; ok = true; break; }
+      }
+      if (!ok) return Infinity;
+    }
+    let shortSmall = 0, shortBig = 0;
+    const used = new Array(N_TYPES).fill(0);
+    for (let i = 0; i < variant.groups.length; i++) {
+      if (taken[i]) continue;
+      const grp = variant.groups[i];
+      const have = Math.min(c[grp.tile] - used[grp.tile], grp.size);
+      used[grp.tile] += Math.max(0, have);
+      const short = grp.size - Math.max(0, have);
+      if (grp.size >= 3) shortBig += short; else shortSmall += short;
+    }
+    return shortSmall + Math.max(0, shortBig - c[JOKER]);
+  }
+
+  /*
+   * Rank the card against a hand: for every card hand, the minimum tiles
+   * needed across its variants. Sorted best-first.
+   */
+  function bestHands(c, exposures, topN) {
+    const best = new Array(CARD.length).fill(null);
+    for (const v of ALL_VARIANTS) {
+      const need = variantNeed(c, exposures, v);
+      if (need === Infinity) continue;
+      if (!best[v.hand] || need < best[v.hand].need) best[v.hand] = { hand: v.hand, need, variant: v };
+    }
+    const rows = best.filter(Boolean);
+    rows.sort((a, b) => a.need - b.need || CARD[b.hand].points - CARD[a.hand].points);
+    return topN ? rows.slice(0, topN) : rows;
+  }
+
+  const bestNeed = (c, exposures) => {
+    const rows = bestHands(c, exposures, 1);
+    return rows.length ? rows[0].need : Infinity;
+  };
+
+  // A hand wins when 14 tiles (counting exposures) complete a pattern exactly.
+  function isMahjongg(c, exposures) {
+    let total = c.reduce((a, b) => a + b, 0);
+    for (const ex of exposures) total += ex.size;
+    return total === 14 && bestNeed(c, exposures) === 0;
+  }
+
+  /*
+   * Which tiles of the (concealed) hand does the best variant actually use?
+   * Everything else is surplus — Charleston and discard fodder.
+   * Considers the top few hands so a close second line isn't stripped.
+   */
+  function usefulCounts(c, exposures, depth) {
+    const rows = bestHands(c, exposures, depth || 3);
+    const useful = new Array(N_TYPES).fill(0);
+    for (const row of rows) {
+      const inVariant = new Array(N_TYPES).fill(0);
+      for (const grp of row.variant.groups) inVariant[grp.tile] += grp.size;
+      for (let t = 0; t < N_TYPES; t++) {
+        useful[t] = Math.max(useful[t], Math.min(c[t], inVariant[t]));
+      }
+    }
+    useful[JOKER] = c[JOKER]; // jokers are always worth keeping
+    return useful;
+  }
+
+  /*
+   * Rank every distinct discard from a hand holding one extra tile:
+   * lowest remaining distance first, then the most live improving tiles.
+   * unseen: 36-array of copies not visible to the player. Jokers are never
+   * offered as discards unless literally nothing else is legal.
+   */
+  function evaluateDiscards(c, exposures, unseen) {
+    const rows = [];
+    for (let t = 0; t < N_TYPES; t++) {
+      if (c[t] === 0 || t === JOKER) continue;
+      c[t]--;
+      const ranked = bestHands(c, exposures, 2);
+      const need = ranked.length ? ranked[0].need : Infinity;
+      let ukeire = 0;
+      const improving = [];
+      for (let u = 0; u < N_TYPES; u++) {
+        const avail = unseen ? unseen[u] : copiesOf(u) - c[u];
+        if (avail <= 0) continue;
+        c[u]++;
+        if (bestNeed(c, exposures) < need) { ukeire += avail; improving.push({ tile: u, count: avail }); }
+        c[u]--;
+      }
+      rows.push({ tile: t, need, ukeire, improving, target: ranked.length ? ranked[0].hand : null });
+      c[t]++;
+    }
+    rows.sort((a, b) => a.need - b.need || b.ukeire - a.ukeire);
+    return rows;
+  }
+
+  /*
+   * Charleston: choose n tiles to pass. Jokers may never be passed.
+   * Strategy: keep everything the top card lines use; pass the rest,
+   * least-connected first.
+   */
+  function choosePass(c, n) {
+    const useful = usefulCounts(c, [], 3);
+    const pass = [];
+    const surplus = [];
+    for (let t = 0; t < N_TYPES; t++) {
+      if (t === JOKER) continue;
+      for (let k = useful[t]; k < c[t]; k++) surplus.push(t);
+    }
+    // pass honors and flowers among the surplus last (flowers feed many hands)
+    surplus.sort((a, b) => (a === FLOWER ? 1 : 0) - (b === FLOWER ? 1 : 0));
+    while (pass.length < n && surplus.length) pass.push(surplus.shift());
+    if (pass.length < n) {
+      // hand is dense: shed the copies whose loss hurts the least
+      const work = c.slice();
+      for (const t of pass) work[t]--;
+      while (pass.length < n) {
+        let bestT = -1, bestScore = Infinity;
+        for (let t = 0; t < N_TYPES; t++) {
+          if (t === JOKER || work[t] === 0) continue;
+          work[t]--;
+          const need = bestNeed(work, []);
+          work[t]++;
+          if (need < bestScore) { bestScore = need; bestT = t; }
+        }
+        work[bestT]--;
+        pass.push(bestT);
+      }
+    }
+    return pass;
+  }
+
+  /*
+   * Exposure calls on a discard: for each non-concealed card line, can the
+   * caller take this tile and immediately expose a complete group of 3+
+   * (using hand copies + jokers)? Returns available sizes with the joker
+   * count each would spend. Discarded jokers are dead and can never be called.
+   */
+  function callOptions(c, exposures, tile) {
+    if (tile === JOKER) return [];
+    const sizes = new Map();
+    for (const v of ALL_VARIANTS) {
+      if (CARD[v.hand].concealed) continue;
+      for (const grp of v.groups) {
+        if (grp.tile !== tile || grp.size < 3) continue;
+        c[tile]++;
+        const compatible = variantNeed(c, exposures, v) !== Infinity;
+        c[tile]--;
+        if (!compatible) continue;
+        const own = Math.min(c[tile], grp.size - 1);
+        const jokersNeeded = grp.size - 1 - own;
+        if (jokersNeeded <= c[JOKER]) {
+          const prev = sizes.get(grp.size);
+          if (!prev || jokersNeeded < prev.jokers) sizes.set(grp.size, { size: grp.size, jokers: jokersNeeded, hand: v.hand });
+        }
+      }
+    }
+    return [...sizes.values()].sort((a, b) => a.size - b.size);
+  }
+
   global.Mahjong = {
-    suitOf, numOf, isHonor, isTerminal, tileName,
+    // tile helpers
+    suitOf, numOf, isJoker, isFlower, tileName, copiesOf,
+    CRAK, DOT, BAM, EAST, SOUTH, WEST, NORTH, SOAP, GREEN, RED, FLOWER, JOKER, N_TYPES,
+    // deck
     rng, buildWall, counts,
-    shanten, isWinningHand, ukeire, evaluateDiscards, chowOptions, winPatterns,
+    // card + evaluation
+    CARD, ALL_VARIANTS, variantNeed, bestHands, bestNeed, isMahjongg,
+    usefulCounts, evaluateDiscards, choosePass, callOptions,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

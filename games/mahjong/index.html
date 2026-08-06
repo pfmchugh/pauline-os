@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mahjong Trainer — Pauline OS</title>
-<meta name="description" content="Learn mahjong from absolute zero: interactive lessons, then a live game against bots with a coach explaining the best move every turn.">
+<title>American Mah Jongg Trainer — Pauline OS</title>
+<meta name="description" content="Learn American Mah Jongg from absolute zero: interactive lessons, the Charleston, jokers, and a live game against bots with a coach explaining the best move every turn.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- media=print + onload swap keeps the webfont from blocking script execution -->
@@ -42,12 +42,15 @@
   <main id="play" class="mj-view" hidden>
     <div id="play-bar">
       <button id="new-game" class="pixel-btn">↻ New game</button>
+      <button id="card-btn" class="pixel-btn" title="Show the practice card with live tiles-away counts">☰ Card</button>
       <label id="coach-wrap" title="Turn move recommendations on or off">
         <input type="checkbox" id="coach-toggle" checked> <span class="pixel">Coach</span>
       </label>
       <div class="spacer"></div>
       <div id="wall-count" class="pixel"></div>
     </div>
+
+    <div id="card-panel" hidden></div>
 
     <div id="table">
       <div id="opponents"></div>

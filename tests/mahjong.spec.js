@@ -3,8 +3,9 @@ const { test, expect } = require('@playwright/test');
 
 const GAME = '/games/mahjong/index.html';
 
-/* Tile ids: 0-8 characters 1-9, 9-17 dots 1-9, 18-26 bamboo 1-9,
- * 27-33 honors (East South West North White Green Red). */
+/* Tile ids: 0-8 craks 1-9, 9-17 dots 1-9, 18-26 bams 1-9,
+ * 27-30 winds (E S W N), 31 soap, 32 green, 33 red, 34 flower, 35 joker. */
+const F = 34, J = 35;
 
 test.describe('desktop: Games folder', () => {
   test.beforeEach(async ({ page }) => {
@@ -29,7 +30,7 @@ test.describe('desktop: Games folder', () => {
     await expect(page.locator('#mahjong-iframe')).toHaveAttribute('src', /embed=1/);
     // the app actually boots inside the window
     await expect(page.frameLocator('#mahjong-iframe').locator('.mj-title')).toBeVisible();
-    await expect(page.frameLocator('#mahjong-iframe').locator('#lesson-title')).toHaveText('Welcome to Mahjong');
+    await expect(page.frameLocator('#mahjong-iframe').locator('#lesson-title')).toHaveText('Welcome to American Mah Jongg');
   });
 
   test('the window offers a full-screen escape hatch', async ({ page }) => {
@@ -44,50 +45,80 @@ test.describe('engine', () => {
     await page.goto(GAME);
   });
 
-  const shanten = (page, tiles, open = 0) =>
-    page.evaluate(([t, o]) => window.Mahjong.shanten(t, o), [tiles, open]);
+  const evalIn = (page, fn, arg) => page.evaluate(fn, arg);
 
-  test('a complete hand scores -1 (won)', async ({ page }) => {
-    // m123 m456 m789 + p1 pair + s123
-    expect(await shanten(page, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 18, 19, 20])).toBe(-1);
+  test('every hand on the practice card is exactly 14 tiles', async ({ page }) => {
+    const bad = await page.evaluate(() =>
+      window.Mahjong.CARD.filter((h) =>
+        h.variants().some((v) => v.reduce((a, g) => a + g.size, 0) !== 14)).map((h) => h.id));
+    expect(bad).toEqual([]);
   });
 
-  test('one tile short of complete is 0 (ready / tenpai)', async ({ page }) => {
-    expect(await shanten(page, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 18, 19])).toBe(0);
+  test('a complete like-numbers hand is Mah Jongg', async ({ page }) => {
+    // FF + kong of 5s in craks, dots, and bams
+    const win = await evalIn(page, ([f]) =>
+      window.Mahjong.isMahjongg(window.Mahjong.counts([f, f, 4, 4, 4, 4, 13, 13, 13, 13, 22, 22, 22, 22]), []), [F]);
+    expect(win).toBe(true);
   });
 
-  test('thirteen unconnected tiles are far from ready', async ({ page }) => {
-    const junk = [0, 8, 9, 17, 18, 26, 27, 28, 29, 30, 31, 32, 33];
-    expect(await shanten(page, junk)).toBeGreaterThanOrEqual(6);
+  test('jokers substitute in kongs but never in the flower pair', async ({ page }) => {
+    const [inKong, inPair] = await evalIn(page, ([f, j]) => {
+      const M = window.Mahjong;
+      return [
+        M.isMahjongg(M.counts([f, f, 4, 4, 4, j, 13, 13, j, j, 22, 22, 22, 22]), []),
+        M.isMahjongg(M.counts([f, j, 4, 4, 4, 4, 13, 13, 13, 13, 22, 22, 22, 22]), []),
+      ];
+    }, [F, J]);
+    expect(inKong).toBe(true);
+    expect(inPair).toBe(false);
   });
 
-  test('open melds count as finished sets', async ({ page }) => {
-    // three claimed melds + m123 + pair of p1 = a won hand
-    expect(await page.evaluate(() => window.Mahjong.isWinningHand([0, 1, 2, 9, 9], 3))).toBe(true);
+  test('an exposed kong counts toward the hand', async ({ page }) => {
+    const win = await evalIn(page, ([f]) =>
+      window.Mahjong.isMahjongg(
+        window.Mahjong.counts([f, f, 13, 13, 13, 13, 22, 22, 22, 22]),
+        [{ tile: 4, size: 4, jokers: 0 }]), [F]);
+    expect(win).toBe(true);
   });
 
-  test('chowOptions finds every run the hand can build around a claim', async ({ page }) => {
-    // hand holds p3 p4 p6 p7; claiming p5 can make 3-4-5, 4-5-6, or 5-6-7
-    const opts = await page.evaluate(() => window.Mahjong.chowOptions([11, 12, 14, 15], 13));
-    expect(opts).toEqual([[11, 12], [12, 14], [14, 15]]);
-    // honors can never be chowed
-    expect(await page.evaluate(() => window.Mahjong.chowOptions([27, 27], 27))).toEqual([]);
+  test('concealed hands reject exposures', async ({ page }) => {
+    const ok = await page.evaluate(() => {
+      const M = window.Mahjong;
+      const rows = M.bestHands(M.counts([0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5]), [{ tile: 8, size: 3, jokers: 0 }]);
+      return rows.every((r) => !M.CARD[r.hand].concealed);
+    });
+    expect(ok).toBe(true);
   });
 
-  test('evaluateDiscards recommends cutting the lone honor', async ({ page }) => {
-    // m234 p345 s456 s78 p88 + lone East: dropping East leaves the hand ready
-    const rows = await page.evaluate(() =>
-      window.Mahjong.evaluateDiscards([1, 2, 3, 11, 12, 13, 21, 22, 23, 24, 25, 16, 16, 27], 0));
-    expect(rows[0].tile).toBe(27);
-    expect(rows[0].shanten).toBe(0);
-    expect(rows[0].ukeire).toBeGreaterThan(0);
+  test('callOptions offers pung and kong with joker costs; discarded jokers are dead', async ({ page }) => {
+    const [opts, jokerCall] = await evalIn(page, ([f, j]) => {
+      const M = window.Mahjong;
+      const c = M.counts([4, 4, j, 13, 13, 22, 22, f, f, 8, 8, 8, 8]);
+      return [M.callOptions(c, [], 4), M.callOptions(c, [], j)];
+    }, [F, J]);
+    expect(opts.map((o) => o.size)).toContain(3);
+    expect(jokerCall).toEqual([]);
   });
 
-  test('winPatterns spots a full flush', async ({ page }) => {
-    const pats = await page.evaluate(() =>
-      window.Mahjong.winPatterns([0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 4, 4], 'tsumo'));
-    expect(pats.join(' ')).toMatch(/Full Flush/);
-    expect(pats.join(' ')).toMatch(/Self-draw/);
+  test('the Charleston picker never passes jokers', async ({ page }) => {
+    const pass = await evalIn(page, ([j]) => {
+      const M = window.Mahjong;
+      return M.choosePass(M.counts([j, j, j, 4, 4, 13, 13, 27, 29, 30, 8, 17, 26]), 3);
+    }, [J]);
+    expect(pass).toHaveLength(3);
+    expect(pass).not.toContain(J);
+  });
+
+  test('quints are reachable only through jokers', async ({ page }) => {
+    const rows = await evalIn(page, ([f, j]) => {
+      const M = window.Mahjong;
+      // 4 flowers, kong of 3 bams, kong of 3 dots, a joker, one stray
+      const c = M.counts([f, f, f, f, 20, 20, 20, 20, j, 11, 11, 11, 11, 2]);
+      return M.evaluateDiscards(c, [], null).slice(0, 1)
+        .map((r) => ({ tile: r.tile, need: r.need, target: M.CARD[r.target].id }));
+    }, [F, J]);
+    expect(rows[0].target).toBe('quints');
+    expect(rows[0].need).toBe(1);
   });
 });
 
@@ -98,20 +129,22 @@ test.describe('learn mode', () => {
 
   test('starts on lesson 1 with navigation', async ({ page }) => {
     await expect(page.locator('#lesson-kicker')).toHaveText('LESSON 1 OF 8');
-    await expect(page.locator('#lesson-title')).toHaveText('Welcome to Mahjong');
+    await expect(page.locator('#lesson-title')).toHaveText('Welcome to American Mah Jongg');
     await expect(page.locator('#lesson-prev')).toBeDisabled();
     await page.locator('#lesson-next').click();
     await expect(page.locator('#lesson-title')).toHaveText('Meet the tiles');
     await expect(page.locator('#lesson-prev')).toBeEnabled();
   });
 
-  test('progress dots jump straight to a lesson', async ({ page }) => {
-    await page.locator('#lesson-dots .dot').nth(4).click();
-    await expect(page.locator('#lesson-kicker')).toHaveText('LESSON 5 OF 8');
+  test('the card lesson renders the full practice card', async ({ page }) => {
+    await page.locator('#lesson-dots .dot').nth(2).click();
+    await expect(page.locator('#lesson-title')).toHaveText(/card/i);
+    await expect(page.locator('#lesson-body .card-hand')).toHaveCount(11);
+    await expect(page.locator('#lesson-body .card-cat').first()).toHaveText('ANY LIKE NUMBERS');
   });
 
   test('quizzes grade the answer and explain why', async ({ page }) => {
-    await page.locator('#lesson-dots .dot').nth(2).click(); // "The three kinds of groups"
+    await page.locator('#lesson-dots .dot').nth(3).click(); // the Charleston
     const quiz = page.locator('.quiz');
     await quiz.locator('.q-opt[data-ok="0"]').first().click();
     await expect(quiz.locator('.q-fb')).toHaveClass(/bad/);
@@ -125,7 +158,9 @@ test.describe('learn mode', () => {
     await page.locator('#start-guided').click();
     await expect(page.locator('#play')).toBeVisible();
     await expect(page.locator('#learn')).toBeHidden();
-    await expect(page.locator('#hand .tile')).toHaveCount(14); // dealer draws first
+    // the game opens in the Charleston with 13 tiles
+    await expect(page.locator('#hand .tile')).toHaveCount(13);
+    await expect(page.locator('#pass-btn')).toBeVisible();
   });
 });
 
@@ -136,48 +171,84 @@ test.describe('play mode', () => {
     await page.goto(url);
   });
 
-  test('deals 13 tiles to each bot and 14 to you (East draws first)', async ({ page }) => {
-    await expect(page.locator('#hand .tile')).toHaveCount(14);
-    for (const opp of ['opp-1', 'opp-2', 'opp-3']) {
-      await expect(page.locator(`#${opp} .opp-backs .tile.back`)).toHaveCount(13);
+  /** Complete the three Charleston passes using the coach's picks. */
+  async function runCharleston(page) {
+    for (let i = 0; i < 3; i++) {
+      await page.locator('#pass-suggest').click();
+      await expect(page.locator('#hand .tile.sel')).toHaveCount(3);
+      await page.locator('#pass-btn').click();
     }
-    await expect(page.locator('#wall-count')).toHaveText(/Wall: 83 tiles/); // 136 - 52 - 1 drawn
-  });
-
-  test('the coach explains the turn and stars a recommended discard', async ({ page }) => {
-    await expect(page.locator('#coach-body')).toContainText('Best discard:');
-    await expect(page.locator('#coach-body')).toContainText('Why:');
-    await expect(page.locator('#hand .tile.reco')).toHaveCount(1);
-  });
-
-  test('discarding hands the turn to the bots, then control returns', async ({ page }) => {
-    await page.locator('#hand .tile.reco').click();
-    await expect(page.locator('#hand .tile')).toHaveCount(13);
-    await expect(page.locator('#river-0 .tile')).toHaveCount(1);
-    // bots play at fast speed until it's your decision again (turn or claim)
     await page.waitForFunction(() => {
       const s = window.__mj.state;
       return s.over || s.pending || (s.turn === 0 && s.phase === 'discard');
     });
+  }
+
+  test('deals 13 tiles each and opens in the Charleston', async ({ page }) => {
+    await expect(page.locator('#hand .tile')).toHaveCount(13);
+    for (const opp of ['opp-1', 'opp-2', 'opp-3']) {
+      await expect(page.locator(`#${opp} .opp-backs .tile.back`)).toHaveCount(13);
+    }
+    await expect(page.locator('#wall-count')).toHaveText(/Charleston · pass 1\/3/);
+    await expect(page.locator('#pass-btn')).toBeDisabled();
+    await expect(page.locator('#coach-body')).toContainText('Charleston');
+  });
+
+  test('selecting three tiles enables the pass; three passes start play', async ({ page }) => {
+    await runCharleston(page);
     const state = await page.evaluate(() => window.__mj.state);
+    expect(state.passNum).toBe(3);
+    // East drew a 14th tile (unless a call is already pending)
     expect(state.over || state.pending || state.handSizes[0] === 14).toBeTruthy();
+    await expect(page.locator('#wall-count')).toHaveText(/Wall: \d+ tiles/);
+  });
+
+  test('after the Charleston the coach names a card line and stars a discard', async ({ page }) => {
+    await runCharleston(page);
+    const state = await page.evaluate(() => window.__mj.state);
+    test.skip(state.pending || state.over, 'seeded game opened with a call decision');
+    await expect(page.locator('#coach-body')).toContainText('Best line:');
+    await expect(page.locator('#coach-body')).toContainText('Best discard:');
+    await expect(page.locator('#hand .tile.reco')).toHaveCount(1);
+  });
+
+  test('discarding hands the turn to the bots, then control returns', async ({ page }) => {
+    await runCharleston(page);
+    const state = await page.evaluate(() => window.__mj.state);
+    test.skip(state.pending || state.over, 'seeded game opened with a call decision');
+    await page.locator('#hand .tile.reco').click();
+    await expect(page.locator('#hand .tile')).toHaveCount(13);
+    await expect(page.locator('#river-0 .tile')).toHaveCount(1);
+    await page.waitForFunction(() => {
+      const s = window.__mj.state;
+      return s.over || s.pending || (s.turn === 0 && s.phase === 'discard' && s.handSizes[0] === 14);
+    });
+  });
+
+  test('the card panel shows live tiles-away badges', async ({ page }) => {
+    await page.locator('#card-btn').click();
+    await expect(page.locator('#card-panel')).toBeVisible();
+    await expect(page.locator('#card-panel .card-hand')).toHaveCount(11);
+    await expect(page.locator('#card-panel .card-badge').first()).toBeVisible();
+    await expect(page.locator('#card-panel .card-badge.best')).toHaveText(/\d+ away/);
+    await page.locator('#card-btn').click();
+    await expect(page.locator('#card-panel')).toBeHidden();
   });
 
   test('turning the coach off hides recommendations', async ({ page }) => {
     await page.locator('#coach-toggle').uncheck();
     await expect(page.locator('#coach')).toHaveClass(/coach-off/);
-    await expect(page.locator('#hand .tile.reco')).toHaveCount(0);
     await expect(page.locator('#coach-body')).toContainText('flying solo');
     await page.locator('#coach-toggle').check();
-    await expect(page.locator('#hand .tile.reco')).toHaveCount(1);
+    await expect(page.locator('#coach-body')).toContainText('Coach would pass:');
   });
 
-  test('New game re-deals a fresh hand', async ({ page }) => {
-    await page.locator('#hand .tile.reco').click();
-    await expect(page.locator('#river-0 .tile')).toHaveCount(1);
+  test('New game re-deals back into the Charleston', async ({ page }) => {
+    await runCharleston(page);
     await page.locator('#new-game').click();
+    await expect(page.locator('#wall-count')).toHaveText(/Charleston · pass 1\/3/);
+    await expect(page.locator('#hand .tile')).toHaveCount(13);
     await expect(page.locator('#river-0 .tile')).toHaveCount(0);
-    await expect(page.locator('#hand .tile')).toHaveCount(14);
   });
 
   test('embed flag hides the home breadcrumb', async ({ page }) => {
