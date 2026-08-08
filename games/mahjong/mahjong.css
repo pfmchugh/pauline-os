@@ -84,6 +84,18 @@ button { font-family: inherit; font-size: inherit; }
 .crumb:hover { color: var(--accent); }
 body.embed .crumb { display: none; }
 
+/* Embedded in a Pauline OS window: the window already provides the desktop
+   and chrome, so drop the fake desk background and let the app fill the frame. */
+body.embed {
+  background-color: var(--win-bg);
+  background-image: none;
+}
+body.embed #mj-app {
+  max-width: none;
+  border-left: none;
+  border-right: none;
+}
+
 .mj-title { font-size: 14px; font-weight: 700; }
 
 .mj-tabs { margin-left: auto; display: flex; gap: 4px; }
@@ -174,6 +186,7 @@ button.tile:disabled { cursor: default; transform: none; }
   overflow-y: auto;
   max-width: 720px;
   width: 100%;
+  margin: 0 auto;
   margin: 0 auto;
 }
 
