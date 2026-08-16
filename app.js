@@ -34,12 +34,13 @@
     readme: [440, 360],
     games: [440, 300],
     mahjong: [880, 640],
+    flashmaster: [820, 620],
   };
 
   const MIN_SIZE = { w: 220, h: 140 };
 
   const INITIAL = {
-    open: { resume: false, projects: false, contact: true, contacts: false, mail: false, trash: false, calendar: false, readme: false, games: false, mahjong: false },
+    open: { resume: false, projects: false, contact: true, contacts: false, mail: false, trash: false, calendar: false, readme: false, games: false, mahjong: false, flashmaster: false },
     pos: {
       resume: { x: 80, y: 70 },
       projects: { x: 160, y: 120 },
@@ -51,6 +52,7 @@
       readme: { x: 240, y: 130 },
       games: { x: 190, y: 110 },
       mahjong: { x: 60, y: 50 },
+      flashmaster: { x: 90, y: 55 },
     },
     z: { resume: 11, contact: 12 },
   };
@@ -137,9 +139,9 @@
     state.shaded[id] = false;
     focusWin(id);
     if (id === 'contact') startTyping();
-    // the Mahjong app only loads once its window is first opened
-    if (id === 'mahjong') {
-      const frame = document.getElementById('mahjong-iframe');
+    // game apps only load once their window is first opened
+    if (id === 'mahjong' || id === 'flashmaster') {
+      const frame = document.getElementById(id + '-iframe');
       if (frame && !frame.src) frame.src = frame.dataset.src;
     }
   }
@@ -230,8 +232,9 @@
   // README opens from inside the Projects folder
   document.getElementById('open-readme').addEventListener('click', () => openWin('readme'));
 
-  // Mahjong Trainer opens from inside the Games folder
+  // games open from inside the Games folder
   document.getElementById('open-mahjong').addEventListener('click', () => openWin('mahjong'));
+  document.getElementById('open-flashmaster').addEventListener('click', () => openWin('flashmaster'));
 
   // ═══ Menu bar dropdowns ═══
 

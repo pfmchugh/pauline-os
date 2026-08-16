@@ -19,7 +19,7 @@ test.describe('desktop: Games folder', () => {
     await page.locator('.icon[data-open="games"]').click();
     await expect(page.locator('#win-games')).toHaveClass(/open/);
     await expect(page.locator('#open-mahjong')).toBeVisible();
-    await expect(page.locator('#win-games .folder-icon-label')).toHaveText('Mahjong Trainer');
+    await expect(page.locator('#open-mahjong .folder-icon-label')).toHaveText('Mahjong Trainer');
   });
 
   test('the app iframe stays unloaded until the window is opened', async ({ page }) => {
