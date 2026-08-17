@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlashMaster — Pauline OS</title>
+<meta name="description" content="A loving on-screen recreation of the FlashMaster handheld: master every basic math fact with tables, practice, tests, flashcards, and special problems.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- media=print + onload swap keeps the webfont from blocking script execution -->
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="flashmaster.css">
+</head>
+<body>
+
+<div id="fm-app">
+
+  <header id="fm-header">
+    <a class="crumb pixel" id="crumb-home" href="../../">◂ Pauline OS</a>
+    <div class="fm-title pixel">🔢 FlashMaster</div>
+    <div class="fm-tag pixel">the handheld that made flashcards obsolete</div>
+  </header>
+
+  <main id="fm-main">
+
+    <!-- ═══ The handheld ═══ -->
+    <section id="device" aria-label="FlashMaster handheld">
+      <div id="device-top">
+        <div id="device-brand" class="pixel">FLASHMASTER<span>™</span></div>
+        <button id="key-power" class="fm-key power" title="On / off">ON<br>OFF</button>
+      </div>
+
+      <div id="lcd" role="status" aria-live="polite">
+        <div id="lcd-status" class="pixel"></div>
+        <div id="lcd-main" class="pixel"></div>
+        <div id="lcd-sub" class="pixel"></div>
+      </div>
+
+      <div id="activity-keys" aria-label="Activity keys">
+        <button class="fm-key activity" data-activity="table-order">TABLE<br>IN ORDER</button>
+        <button class="fm-key activity" data-activity="table-random">TABLE<br>NOT IN ORDER</button>
+        <button class="fm-key activity" data-activity="practice">PRACTICE</button>
+        <button class="fm-key activity" data-activity="test">TEST</button>
+        <button class="fm-key activity" data-activity="flashcards">FLASH<br>CARDS</button>
+        <button class="fm-key activity" data-activity="special">SPECIAL<br>PROBLEMS</button>
+      </div>
+
+      <div id="selector-keys" aria-label="Setting keys">
+        <button id="key-time" class="fm-key selector">TIME<br>LIMIT</button>
+        <button id="key-op" class="fm-key selector">+ − × ÷</button>
+        <button id="key-level" class="fm-key selector">LEVEL<br>1–9</button>
+      </div>
+
+      <div id="digit-keys" aria-label="Number keys">
+        <button class="fm-key digit" data-digit="1">1</button>
+        <button class="fm-key digit" data-digit="2">2</button>
+        <button class="fm-key digit" data-digit="3">3</button>
+        <button class="fm-key digit" data-digit="4">4</button>
+        <button class="fm-key digit" data-digit="5">5</button>
+        <button class="fm-key digit" data-digit="6">6</button>
+        <button class="fm-key digit" data-digit="7">7</button>
+        <button class="fm-key digit" data-digit="8">8</button>
+        <button class="fm-key digit" data-digit="9">9</button>
+        <button class="fm-key digit" data-digit="0">0</button>
+      </div>
+
+      <div id="device-foot">
+        <label id="sound-wrap" title="Key beeps on or off">
+          <input type="checkbox" id="sound-toggle" checked> <span class="pixel">Sound</span>
+        </label>
+        <span class="pixel foot-note">no batteries required</span>
+      </div>
+    </section>
+
+    <!-- ═══ The manual ═══ -->
+    <aside id="manual">
+      <div class="manual-head pixel">◆ OWNER'S MANUAL</div>
+      <div class="manual-body">
+        <p>This is a faithful recreation of the <strong>FlashMaster</strong>, the early-2000s
+        handheld that drilled every basic math fact. Pick an operation and a level,
+        then press one of the six yellow activity keys.</p>
+
+        <h3 class="pixel">Settings</h3>
+        <ul>
+          <li><strong>+ − × ÷</strong> cycles the operation.</li>
+          <li><strong>LEVEL</strong> cycles difficulty 1–9. In Practice, Test, and
+            Flashcards, level&nbsp;<em>n</em> covers the 0s through <em>n</em>s tables
+            (level&nbsp;9 = every fact). In the Table activities it picks
+            <em>which</em> table you run.</li>
+          <li><strong>TIME LIMIT</strong> cycles the whole-activity limit for
+            Practice and Test: off, or 30–180 seconds.</li>
+        </ul>
+
+        <h3 class="pixel">Activities</h3>
+        <ul>
+          <li><strong>Table: In Order</strong> — one table, up 0–9 and back down.</li>
+          <li><strong>Table: Not in Order</strong> — the same table, shuffled.</li>
+          <li><strong>Practice</strong> — 30 problems from your level. Miss one and
+            it repeats until you get it; miss it twice in a row and the FlashMaster
+            shows the answer, then has you key it in.</li>
+          <li><strong>Test</strong> — 30 problems, one try each, score at the end.</li>
+          <li><strong>Flashcards</strong> — 30 problems against the clock-on-the-wall:
+            no limit, but your average seconds per problem is your score.</li>
+          <li><strong>Special Problems</strong> — replays the 15 problems you missed
+            most recently, until each is answered correctly.</li>
+        </ul>
+
+        <h3 class="pixel">Answering</h3>
+        <p>Type with the keypad or your keyboard. Answers submit by themselves when
+        you've typed the right number of digits — just like the real thing.
+        <strong>Backspace</strong> erases; <strong>Enter</strong> submits early.</p>
+
+        <p class="manual-fine">Missed problems are remembered between visits.
+        Ten minutes a day and the times tables are yours.</p>
+      </div>
+    </aside>
+
+  </main>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

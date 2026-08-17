@@ -1170,6 +1170,36 @@ input, textarea { font-family: Verdana, Geneva, sans-serif; }
   line-height: 1;
 }
 
+.icon-flashmaster {
+  width: 32px; height: 46px;
+  background: #b8b6ae;
+  border: 2px solid #181818;
+  border-radius: 6px;
+  box-shadow: inset 1px 1px 0 #d9d7cf, inset -1px -1px 0 #8d8b83, 2px 2px 0 rgba(0, 0, 0, .35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 5px;
+}
+.icon-flashmaster .fm-screen {
+  width: 22px; height: 14px;
+  background: #9fb388;
+  border: 1px solid #181818;
+  font-family: 'Silkscreen', monospace;
+  font-size: 7px;
+  line-height: 13px;
+  text-align: center;
+  color: #1d2a17;
+}
+.icon-flashmaster .fm-dots { display: flex; gap: 3px; }
+.icon-flashmaster .fm-dots span {
+  width: 5px; height: 5px;
+  background: #e8c832;
+  border: 1px solid #181818;
+  border-radius: 2px;
+}
+
 .app-frame {
   flex: 1;
   min-height: 0;
