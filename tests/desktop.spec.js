@@ -225,10 +225,10 @@ test.describe('notepads', () => {
     await expect(hello).toHaveValue(/Say hi — I read everything\./);
   });
 
-  test('Projects folder links to Stone Studio', async ({ page }) => {
+  test('Projects folder links to Bling.exe', async ({ page }) => {
     await page.locator('.icon[data-open="projects"]').click();
-    await expect(page.locator('#open-stonestudio')).toHaveAttribute('href', 'stonestudio/');
-    const res = await page.request.get('stonestudio/');
+    await expect(page.locator('#open-bling')).toHaveAttribute('href', 'bling/');
+    const res = await page.request.get('bling/');
     expect(res.ok()).toBeTruthy();
   });
 });
