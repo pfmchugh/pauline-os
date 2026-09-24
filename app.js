@@ -21,8 +21,6 @@
 
   const HELLO_TEXT = "═══ HELLO ═══\n\nHi, I'm Pauline. Welcome to my desktop.\nPoke around — my resume is on the desktop,\nand you can drop me a line with Mail.\n\nemail ...... mchughpf@gmail.com\nlocation ... Houston, TX\nlinkedin ... linkedin.com/in/pfmchugh\n\nSay hi — I read everything.";
 
-  const README_TEXT = "═══ README ═══\n\nWhat's cooking:\n\n- pauline-os v2 (you are here)\n- NEW: Mahjong Trainer — learn\n  American Mah Jongg, in Games\n- writing up QA war stories\n- more apps for this desktop\n\nCheck back soon — this folder\nwon't stay empty for long.";
-
   const SIZES = {
     resume: [660, 540],
     projects: [440, 300],
@@ -31,7 +29,6 @@
     mail: [480, 420],
     trash: [400, 240],
     calendar: [740, 560],
-    readme: [440, 360],
     games: [440, 300],
     mahjong: [880, 640],
     flashmaster: [820, 620],
@@ -40,7 +37,7 @@
   const MIN_SIZE = { w: 220, h: 140 };
 
   const INITIAL = {
-    open: { resume: false, projects: false, contact: true, contacts: false, mail: false, trash: false, calendar: false, readme: false, games: false, mahjong: false, flashmaster: false },
+    open: { resume: false, projects: false, contact: true, contacts: false, mail: false, trash: false, calendar: false, games: false, mahjong: false, flashmaster: false },
     pos: {
       resume: { x: 80, y: 70 },
       projects: { x: 160, y: 120 },
@@ -49,7 +46,6 @@
       mail: { x: 140, y: 90 },
       trash: { x: 260, y: 170 },
       calendar: { x: 110, y: 60 },
-      readme: { x: 240, y: 130 },
       games: { x: 190, y: 110 },
       mahjong: { x: 60, y: 50 },
       flashmaster: { x: 90, y: 55 },
@@ -229,9 +225,6 @@
 
   window.addEventListener('resize', renderAll);
 
-  // README opens from inside the Projects folder
-  document.getElementById('open-readme').addEventListener('click', () => openWin('readme'));
-
   // games open from inside the Games folder
   document.getElementById('open-mahjong').addEventListener('click', () => openWin('mahjong'));
   document.getElementById('open-flashmaster').addEventListener('click', () => openWin('flashmaster'));
@@ -381,7 +374,6 @@
     renderAll();
     renderTrash();
     renderClock();
-    document.getElementById('readme-text').value = README_TEXT;
     startTyping();
     mailForm.reset();
     mailError.textContent = '';
@@ -412,10 +404,6 @@
     }
   });
   startTyping();
-
-  // ═══ README notepad ═══
-
-  document.getElementById('readme-text').value = README_TEXT;
 
   // ═══ Mail form ═══
 

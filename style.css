@@ -593,9 +593,29 @@ input, textarea { font-family: Verdana, Geneva, sans-serif; }
 }
 .folder-icon:hover { filter: brightness(1.05); }
 .folder-icon:active { transform: scale(.88) translateY(2px); }
-.folder-icon-label { font-family: 'Silkscreen', monospace; font-size: 10px; color: #181818; }
+a.folder-icon { text-decoration: none; }
+.folder-icon-label { font-family: 'Silkscreen', monospace; font-size: 10px; color: #181818; text-align: center; }
 
-/* Notepad windows (hello.txt, README.md) */
+.icon-bling {
+  width: 40px; height: 40px;
+  position: relative;
+  background: #f4e9f1;
+  border: 2px solid #181818;
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, .35);
+}
+.icon-bling .gem {
+  position: absolute;
+  width: 11px; height: 11px;
+  border: 1px solid #181818;
+  transform: rotate(45deg);
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .8);
+}
+.icon-bling .g1 { left: 5px;  top: 6px;  background: #c9e6f5; }
+.icon-bling .g2 { left: 19px; top: 11px; background: #f2a7c8; }
+.icon-bling .g3 { left: 9px;  top: 21px; background: #e8d6ff; }
+
+/* Notepad windows (hello.txt) */
 
 .notepad {
   flex: 1;

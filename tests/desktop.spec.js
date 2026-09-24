@@ -225,11 +225,11 @@ test.describe('notepads', () => {
     await expect(hello).toHaveValue(/Say hi — I read everything\./);
   });
 
-  test('README.md opens from inside the Projects folder', async ({ page }) => {
+  test('Projects folder links to Bling.exe', async ({ page }) => {
     await page.locator('.icon[data-open="projects"]').click();
-    await page.locator('#open-readme').click();
-    await expect(page.locator('#win-readme')).toHaveClass(/open/);
-    await expect(page.locator('#readme-text')).toHaveValue(/pauline-os v2 \(you are here\)/);
+    await expect(page.locator('#open-bling')).toHaveAttribute('href', 'bling/');
+    const res = await page.request.get('bling/');
+    expect(res.ok()).toBeTruthy();
   });
 });
 
