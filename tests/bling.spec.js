@@ -24,4 +24,25 @@ test.describe('Bling.exe', () => {
     await expect.poll(() => page.evaluate(() => window.studioResult.revision)).toBeGreaterThan(before);
     await expect(page.locator('#svgDownload')).toBeEnabled();
   });
+
+  test('typing a word builds a new template and names the SVG after it', async ({ page }) => {
+    await page.goto('bling/');
+    await expect(page.locator('#svgDownload')).toBeEnabled();
+    const before = await page.evaluate(() => window.studioResult.revision);
+    await page.locator('#text').fill('GO TEAM');
+    await expect(page.locator('#status')).toContainText('GO TEAM');
+    await expect.poll(() => page.evaluate(() => window.studioResult.revision)).toBeGreaterThan(before);
+    await expect(page.locator('#svgDownload')).toBeEnabled();
+    const download = page.waitForEvent('download');
+    await page.locator('#svgDownload').click();
+    expect((await download).suggestedFilename()).toBe('GO-TEAM-SS10-fill.svg');
+  });
+
+  test('clearing the text shows a prompt instead of a template', async ({ page }) => {
+    await page.goto('bling/');
+    await expect(page.locator('#svgDownload')).toBeEnabled();
+    await page.locator('#text').fill('');
+    await expect(page.locator('#warning')).toContainText('Type a word');
+    await expect(page.locator('#svgDownload')).toBeDisabled();
+  });
 });
