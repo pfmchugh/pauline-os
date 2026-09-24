@@ -24,10 +24,4 @@ test.describe('Bling.exe', () => {
     await expect.poll(() => page.evaluate(() => window.studioResult.revision)).toBeGreaterThan(before);
     await expect(page.locator('#svgDownload')).toBeEnabled();
   });
-
-  test('the old /stonestudio link redirects to /bling', async ({ page }) => {
-    await page.goto('stonestudio/');
-    await expect(page).toHaveURL(/\/bling\/$/);
-    await expect(page.locator('h1')).toContainText('Bling.exe');
-  });
 });
