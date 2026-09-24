@@ -225,13 +225,6 @@ test.describe('notepads', () => {
     await expect(hello).toHaveValue(/Say hi — I read everything\./);
   });
 
-  test('README.md opens from inside the Projects folder', async ({ page }) => {
-    await page.locator('.icon[data-open="projects"]').click();
-    await page.locator('#open-readme').click();
-    await expect(page.locator('#win-readme')).toHaveClass(/open/);
-    await expect(page.locator('#readme-text')).toHaveValue(/pauline-os v2 \(you are here\)/);
-  });
-
   test('Projects folder links to Stone Studio', async ({ page }) => {
     await page.locator('.icon[data-open="projects"]').click();
     await expect(page.locator('#open-stonestudio')).toHaveAttribute('href', 'stonestudio/');

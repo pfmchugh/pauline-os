@@ -615,7 +615,7 @@ a.folder-icon { text-decoration: none; }
 .icon-stonestudio .g2 { left: 19px; top: 11px; background: #f2a7c8; }
 .icon-stonestudio .g3 { left: 9px;  top: 21px; background: #e8d6ff; }
 
-/* Notepad windows (hello.txt, README.md) */
+/* Notepad windows (hello.txt) */
 
 .notepad {
   flex: 1;
